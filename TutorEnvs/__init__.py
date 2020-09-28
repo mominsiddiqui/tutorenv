@@ -1,6 +1,7 @@
 from gym.envs.registration import register
+from tutorenvs.fractions import FractionArithEnv
 
 register(
-    id='FractionArithEnv',
-    entry_point='TutorEnvs.envs:FractionArithEnv',
+    id='FractionArith-v0',
+    entry_point='tutorenvs:FractionArithEnv',
 )
