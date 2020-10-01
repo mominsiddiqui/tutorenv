@@ -9,7 +9,7 @@ import numpy as np
 if __name__ == "__main__":
 
     # multiprocess environment
-    env = make_vec_env('FractionArith-v0', n_envs=8)
+    env = make_vec_env('FractionArith-v1', n_envs=8)
 
     model = PPO2(MlpPolicy, env, verbose=0,
             gamma=0.5,

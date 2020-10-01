@@ -7,7 +7,7 @@ register(
     entry_point='tutorenvs:FractionArithDigitsEnv',
 )
 
-# register(
-#     id='FractionArith-v1',
-#     entry_point='tutorenvs:FractionArithOppEnv',
-# )
+register(
+    id='FractionArith-v1',
+    entry_point='tutorenvs:FractionArithOppEnv',
+)

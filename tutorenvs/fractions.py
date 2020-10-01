@@ -6,6 +6,7 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 from sklearn.feature_extraction import FeatureHasher
+from sklearn.feature_extraction import DictVectorizer
 import numpy as np
 
 
@@ -49,6 +50,20 @@ class FractionArithSymbolic:
                 'answer_num',
                 'answer_denom',
                 'done']
+
+    def get_possible_args(self):
+        return ['initial_num_left',
+                'initial_denom_left',
+                'initial_operator',
+                'initial_num_right',
+                'initial_denom_right',
+                'convert_num_left',
+                'convert_denom_left',
+                'convert_num_right',
+                'convert_denom_right',
+                'answer_num',
+                'answer_denom'
+                ]
 
     def render(self):
         output = "%s\t\t%s\n---\t%s\t---\t=\n%s\t\t%s\n\nConvert? | %s |\n\n%s\t\t%s\t\t%s\n---\t%s\t---\t=\t---\n%s\t\t%s\t\t%s\n" % (self.state['initial_num_left'],
@@ -396,6 +411,11 @@ class FractionArithDigitsEnv(gym.Env):
 class FractionArithOppEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
+    def get_rl_operators(self):
+        return ['copy',
+                'add',
+                'multiply']
+
     def get_rl_state(self):
         # self.state = {
         #     'initial_num_left': num1,
@@ -416,56 +436,69 @@ class FractionArithOppEnv(gym.Env):
         state = {}
         for attr in self.tutor.state:
             if attr == "initial_operator" or attr == "convert_operator":
-                state[attr] = self.tutor.state[attr]
+                state[attr] = self.tutor.state[attr] == "+"
                 continue
 
-            state[attr + "[0]"] = ""
-            state[attr + "[1]"] = ""
-            state[attr + "[2]"] = ""
+            # just whether or not there is a value
+            state[attr] = self.tutor.state[attr] != ""
 
-            if self.tutor.state[attr] != "":
-                l = len(self.tutor.state[attr])
-
-                if l > 2:
-                    state[attr + "[0]"] = self.tutor.state[attr][-3]
-                if l > 1:
-                    state[attr + "[1]"] = self.tutor.state[attr][-2]
-
-                state[attr + "[2]"] = self.tutor.state[attr][-1]
-
-            # print(self.tutor.state[attr])
-            # pprint(state)
+            # equality
+            for attr2 in self.tutor.state:
+                if attr >= attr2:
+                    continue
+                state['eq(%s,%s)' % (attr, attr2)] = self.tutor.state[attr] == self.tutor.state[attr2]
 
         return state
 
     def __init__(self):
         self.tutor = FractionArithSymbolic()
         n_selections = len(self.tutor.get_possible_selections())
-        n_features = 10000
-        self.feature_hasher = FeatureHasher(n_features=n_features)
+        n_features = len(self.get_rl_state())
+        n_operators = len(self.get_rl_operators())
+        n_args = len(self.tutor.get_possible_args())
+        self.dv = DictVectorizer()
+        self.dv.fit([self.get_rl_state()])
 
         self.observation_space = spaces.Box(low=0.0,
                 high=1.0, shape=(1, n_features), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([n_selections, 10, 10, 10])
+        self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
+            n_args, n_args])
 
     def step(self, action):
-        s, a, i = self.decode(action)
+        try:
+            s, a, i = self.decode(action)
+            reward = self.tutor.apply_sai(s, a, i)
+            done = (s == 'done' and reward == 1.0)
+        except ValueError:
+            reward = -1
+            done = False
+
         # print(s, a, i)
         # print()
-        reward = self.tutor.apply_sai(s, a, i)
         # print(reward)
         
         state = self.get_rl_state()
         # pprint(state)
-        obs = self.feature_hasher.transform([state])[0].toarray()
-        done = (s == 'done' and reward == 1.0)
+        obs = self.dv.transform([state])[0].toarray()
         info = {}
 
         return obs, reward, done, info
 
+
+    def apply_rl_op(self, op, arg1, arg2):
+        if op == "copy":
+            return self.tutor.state[arg1]
+        elif op == "add":
+            return str(int(self.tutor.state[arg1]) + int(self.tutor.state[arg2]))
+        elif op == "multiply":
+            return str(int(self.tutor.state[arg1]) * int(self.tutor.state[arg2]))
+
     def decode(self, action):
         # print(action)
         s = self.tutor.get_possible_selections()[action[0]]
+        op = self.get_rl_operators()[action[1]]
+        arg1 = self.tutor.get_possible_args()[action[2]]
+        arg2 = self.tutor.get_possible_args()[action[3]]
 
         if s == "done":
             a = "ButtonPressed"
@@ -477,11 +510,8 @@ class FractionArithOppEnv(gym.Env):
         if s == "check_convert":
             v = "x"
         else:
-            v = action[1]
-            v += 10 * action[2]
-            v += 100 * action[3]
-        # if action[4]:
-        #     v *= -1
+            v = self.apply_rl_op(op, arg1, arg2)
+
         i = {'value': str(v)}
 
         return s, a, i
@@ -489,7 +519,7 @@ class FractionArithOppEnv(gym.Env):
     def reset(self):
         self.tutor.set_random_problem()
         state = self.get_rl_state()
-        obs = self.feature_hasher.transform([state])[0].toarray()
+        obs = self.dv.transform([state])[0].toarray()
         return obs
 
     def render(self, mode='human', close=False):
