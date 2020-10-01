@@ -41,12 +41,24 @@ class FractionArithSymbolic:
         Returns the current state as a dict.
         """
         state_output = {attr:
-                        {'id': attr, 'value': self.state[attr], 'type': 'TextField',
-                         'contentEditable': self.state[attr] == ""}
+                        {'id': attr, 'value': self.state[attr],
+                         'type': 'TextField',
+                         'contentEditable': self.state[attr] == "",
+                         'dom_class': 'CTATTable--cell',
+                         'above': '',
+                         'below': '',
+                         'to_left': '',
+                         'to_right': ''
+                         }
                         for attr in self.state}
         state_output['done'] = {
             'id': 'done',
-            'type': 'Button'
+            'type': 'Component',
+            'dom_class': 'CTATDoneButton',
+            'above': '',
+            'below': '',
+            'to_left': '',
+            'to_right': ''
         }
 
         return state_output
