@@ -132,8 +132,8 @@ class FractionArithSymbolic:
             return reward
 
         if selection == "done":
-            print("DONE! Only took %i steps." % self.steps)
-            self.render()
+            # print("DONE! Only took %i steps." % self.steps)
+            # self.render()
             # pprint(self.state)
             self.set_random_problem()
 
@@ -523,4 +523,4 @@ class FractionArithOppEnv(gym.Env):
         return obs
 
     def render(self, mode='human', close=False):
-        pass
+        self.tutor.render()
