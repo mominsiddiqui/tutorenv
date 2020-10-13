@@ -1,7 +1,8 @@
 import gym
-from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common import make_vec_env
+from stable_baselines.common.policies import MlpPolicy
 from stable_baselines import PPO2
+from stable_baselines import SAC
 import tutorenvs
 import numpy as np
 
@@ -9,15 +10,14 @@ import numpy as np
 if __name__ == "__main__":
 
     # multiprocess environment
-    env = make_vec_env('FractionArith-v1', n_envs=8)
-
-    model = PPO2(MlpPolicy, env, verbose=0,
+    env = make_vec_env('MultiColumnArith-v0', n_envs=8)
+    model = PPO2(MlpPolicy, env, verbose=1,
             gamma=0.5,
-            tensorboard_log="./ppo_FractionArith-v0/")
-
+            policy_kwargs={'net_arch': [65, 65, {'vf': [65], 'pi': [65]}]},
+            tensorboard_log="./ppo_MultiColumnArith-v0/")
 
     while True:
-        model.learn(total_timesteps=999999999)
+        model.learn(total_timesteps=9999999999)
         # model.save("ppo2_cartpole")
 
         # del model # remove to demonstrate saving and loading
@@ -31,5 +31,5 @@ if __name__ == "__main__":
         #     action, _states = model.predict(obs)
         #     obs, rewards, dones, info = env.step(action)
         #     rwd += np.sum(rewards)
-        #     # env.render()
+        #     env.render()
         # print(rwd)
