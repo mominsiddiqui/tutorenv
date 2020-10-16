@@ -1,6 +1,7 @@
 import gym
 from stable_baselines.common import make_vec_env
 from stable_baselines.common.policies import MlpPolicy
+from stable_baselines.common.policies import CnnPolicy
 from stable_baselines import PPO2
 from stable_baselines import SAC
 import tutorenvs
@@ -10,11 +11,15 @@ import numpy as np
 if __name__ == "__main__":
 
     # multiprocess environment
-    env = make_vec_env('MultiColumnArith-v0', n_envs=8)
-    model = PPO2(MlpPolicy, env, verbose=1,
+    env = make_vec_env('MultiColumnArith-v2', n_envs=8)
+    model = PPO2(CnnPolicy, env, verbose=1,
             gamma=0.5,
-            policy_kwargs={'net_arch': [65, 65, {'vf': [65], 'pi': [65]}]},
+            policy_kwargs={'net_arch': [100, 100, {'vf': [65], 'pi': [65]}]},
             tensorboard_log="./ppo_MultiColumnArith-v0/")
+    # model = PPO2(MlpPolicy, env, verbose=1,
+    #         gamma=0.5,
+    #         # policy_kwargs={'net_arch': [65, 65, {'vf': [65], 'pi': [65]}]},
+    #         tensorboard_log="./ppo_MultiColumnArith-v0/")
 
     while True:
         model.learn(total_timesteps=9999999999)

@@ -8,6 +8,7 @@ from gym.utils import seeding
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.feature_extraction import DictVectorizer
 import numpy as np
+from PIL import Image, ImageDraw
 
 from tutorenvs.utils import BaseOppEnv
 
@@ -417,6 +418,31 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         #     'answer_tens': '',
         #     'answer_ones': ''
         # }
+        state = {attr: " " if self.tutor.state[attr] == '' else self.tutor.state[attr] for
+                attr in self.tutor.state}
+
+        output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
+                state["hundreds_carry"],
+                state["tens_carry"],
+                state["ones_carry"],
+                state["upper_hundreds"],
+                state["upper_tens"],
+                state["upper_ones"],
+                state["lower_hundreds"],
+                state["lower_tens"],
+                state["lower_ones"],
+                state["answer_thousands"],
+                state["answer_hundreds"],
+                state["answer_tens"],
+                state["answer_ones"],
+                )
+
+        img = Image.new('RGB', (50, 90), color="white")
+        d = ImageDraw.Draw(img)
+        d.text((10, 10), output, fill='black')
+        img.save('test.png')
+        print(np.array(img))
+
         return self.tutor.state
 
     def __init__(self):
@@ -469,6 +495,104 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         self.tutor.set_random_problem()
         state = self.get_rl_state()
         obs = self.dv.transform([state])[0].toarray()
+        return obs
+
+    def render(self, mode='human', close=False):
+        self.tutor.render()
+
+class MultiColumnAdditionPixelEnv(gym.Env):
+    metadata = {'render.modes': ['human']}
+
+    def get_rl_state(self):
+        # self.state = {
+        #     'hundreds_carry': '',
+        #     'tens_carry': '',
+        #     'ones_carry': '',
+        #     'upper_hundreds': upper_hundreds,
+        #     'upper_tens': upper_tens,
+        #     'upper_ones': upper_ones,
+        #     'lower_hundreds': lower_hundreds,
+        #     'lower_tens': lower_tens,
+        #     'lower_ones': lower_ones,
+        #     'operator': '+',
+        #     'answer_thousands': '',
+        #     'answer_hundreds': '',
+        #     'answer_tens': '',
+        #     'answer_ones': ''
+        # }
+        state = {attr: " " if self.tutor.state[attr] == '' else self.tutor.state[attr] for
+                attr in self.tutor.state}
+
+        output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
+                state["hundreds_carry"],
+                state["tens_carry"],
+                state["ones_carry"],
+                state["upper_hundreds"],
+                state["upper_tens"],
+                state["upper_ones"],
+                state["lower_hundreds"],
+                state["lower_tens"],
+                state["lower_ones"],
+                state["answer_thousands"],
+                state["answer_hundreds"],
+                state["answer_tens"],
+                state["answer_ones"],
+                )
+
+        img = Image.new('RGB', (50, 90), color="white")
+        d = ImageDraw.Draw(img)
+        d.text((10, 10), output, fill='black')
+        img = img.convert('L')
+        # img.save('test.png')
+        return np.expand_dims(np.array(img)/255, axis=2)
+
+    def __init__(self):
+        self.tutor = MultiColumnAdditionSymbolic()
+        n_selections = len(self.tutor.get_possible_selections())
+
+        print('shape = ', self.get_rl_state().shape)
+
+        self.observation_space = spaces.Box(low=0.0,
+                high=1.0, shape=self.get_rl_state().shape, dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([n_selections, 10])
+
+    def step(self, action):
+        s, a, i = self.decode(action)
+        # print(s, a, i)
+        # print()
+        reward = self.tutor.apply_sai(s, a, i)
+        # print(reward)
+        
+        obs = self.get_rl_state()
+        # pprint(state)
+        done = (s == 'done' and reward == 1.0)
+        info = {}
+
+        return obs, reward, done, info
+
+    def decode(self, action):
+        # print(action)
+        s = self.tutor.get_possible_selections()[action[0]]
+
+        if s == "done":
+            a = "ButtonPressed"
+        else:
+            a = "UpdateField"
+        
+        if s == "done":
+            v = -1
+        if s == "check_convert":
+            v = "x"
+        else:
+            v = action[1]
+
+        i = {'value': str(v)}
+
+        return s, a, i
+
+    def reset(self):
+        self.tutor.set_random_problem()
+        obs = self.get_rl_state()
         return obs
 
     def render(self, mode='human', close=False):
