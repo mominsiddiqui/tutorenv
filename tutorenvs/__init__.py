@@ -4,6 +4,7 @@ from tutorenvs.fractions import FractionArithOppEnv
 from tutorenvs.multicolumn import MultiColumnAdditionOppEnv
 from tutorenvs.multicolumn import MultiColumnAdditionDigitsEnv
 from tutorenvs.multicolumn import MultiColumnAdditionPixelEnv
+from tutorenvs.multicolumn import MultiColumnAdditionPerceptEnv
 
 register(
     id='FractionArith-v0',
@@ -34,4 +35,9 @@ register(
 register(
     id='MultiColumnArith-v2',
     entry_point='tutorenvs:MultiColumnAdditionPixelEnv',
+)
+
+register(
+    id='MultiColumnArith-v3',
+    entry_point='tutorenvs:MultiColumnAdditionPerceptEnv',
 )

@@ -5,53 +5,114 @@ from gym import error, spaces, utils
 from sklearn.feature_extraction import DictVectorizer
 import numpy as np
 
+class OnlineDictVectorizer():
+
+    def __init__(self, n_features):
+        self.n_features = n_features
+        self.separator = '='
+        self.dtype = np.float32
+        self.reset()
+
+    def reset(self):
+        self.key = {}
+
+    def fit(self, X):
+        """
+        Given a set of X, it updates the key with any new values.
+        """
+        
+        for x in X:
+            for f, v in x.items():
+                if isinstance(v, str):
+                    f = "%s%s%s" % (f, self.separator, v)
+                if f not in self.key:
+                    if len(self.key) < self.n_features:
+                        self.key[f] = len(self.key)
+                    else:
+                        print("Exceeded available features")
+
+        return self
+
+    def transform(self, X):
+        """
+        Transforms the data using existing key mappings.
+        """
+        new_X = np.zeros((len(X), self.n_features), dtype=self.dtype)
+
+        for i, x in enumerate(X):
+            for f, v in x.items():
+                if isinstance(v, str):
+                    f = "%s%s%s" % (f, self.separator, v)
+                    v = 1
+                try:
+                    new_X[i, self.key[f]] = self.dtype(v)
+                except KeyError:
+                    pass
+
+        return new_X
+
+    def fit_transform(self, X):
+        """
+        Similar to two calls of fit and transform, but does it all in
+        one iteration rather than two through the data.
+        """
+        new_X = np.zeros((len(X), self.n_features), dtype=self.dtype)
+
+        for i, x in enumerate(X):
+            for f, v in x.items():
+                if isinstance(v, str):
+                    f = "%s%s%s" % (f, self.separator, v)
+                    v = 1
+
+                if f not in self.key:
+                    if len(self.key) < self.n_features:
+                        self.key[f] = len(self.key)
+                    else:
+                        print("Exceeded available features")
+
+                try:
+                    new_X[i, self.key[f]] = self.dtype(v)
+                except KeyError:
+                    pass
+
+        return new_X
+
+
 class BaseOppEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, tutor_class, max_depth=1):
+    def __init__(self, tutor_class, max_depth=0):
         print('building env')
         self.tutor = tutor_class()
 
         self.max_depth = max_depth
         self.internal_memory = {}
 
-        self.possible_attr = set(self.tutor.get_possible_args())
-        for _ in range(self.max_depth):
-            new = set()
-            for opp in self.get_rl_operators():
-                for a1 in self.possible_attr:
-                    for a2 in self.possible_attr:
-                        new.add((opp, a1, a2))
-            self.possible_attr = self.possible_attr.union(new)
-        print('# features = %i' % len(self.possible_attr))
-
-        self.possible_args = list(set([attr[1] if isinstance(attr, tuple) else
-            attr for attr in self.possible_attr]))
-        print('# args = %i' % len(self.possible_args))
-        
-        # one additional option to save result internally
         n_selections = len(self.tutor.get_possible_selections()) + 1
-        print('getting rl state')
-        n_features = len(self.get_rl_state()) 
-        print('done getting rl state')
         n_operators = len(self.get_rl_operators())
-        n_args = len(self.possible_args)
-        self.dv = DictVectorizer()
-        self.dv.fit([self.get_rl_state()])
+        n_args = len(self.tutor.get_possible_args())
+
+        branching = 0
+        for opp, arg_count in self.get_rl_operators():
+            branching += n_args**arg_count
+
+        n_features = len(self.tutor.state) + branching**max_depth
+        print('# features = %i' % n_features)
+
+        self.dv = OnlineDictVectorizer(n_features=n_features)
 
         self.observation_space = spaces.Box(low=0.0,
                 high=1.0, shape=(1, n_features), dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
             n_args, n_args])
-        print('done')
 
     def get_rl_operators(self):
         return [
-                'copy',
-                'add',
-                'multiply',
-                'mod10',
-                'div10',
+                ('copy', 1),
+                ('add', 2),
+                ('multiply', 2),
+                ('mod10', 1),
+                ('div10', 1)
                 ]
 
     def get_rl_state(self):
@@ -83,11 +144,8 @@ class BaseOppEnv(gym.Env):
             state[attr] = self.tutor.state[attr] != ""
 
         # if its in internal memory, then return true, else false.
-        for possible_attr in self.possible_attr:
-            state[possible_attr] = possible_attr in self.internal_memory
-
-        print('done with base attributes in state')
-        print('# of base attributes = %i' % len(state))
+        for attr in self.internal_memory:
+            state[attr] = True
 
         # relations (equality, >10)
         new_relations = {}
@@ -107,32 +165,21 @@ class BaseOppEnv(gym.Env):
             except Exception:
                 new_relations['greater_than_9(%s)' % str(attr)] = False
 
-            # # equality
-            # for attr2 in state:
-            #     if str(attr) >= str(attr2):
-            #         continue
-
-            #     attr2_val = None
-            #     if attr2 in self.tutor.state:
-            #         attr2_val = self.tutor.state[attr2]
-            #     elif attr2 in self.internal_memory:
-            #         attr2_val = self.internal_memory[attr2]
-            #     else:
-            #         attr2_val = ''
-            #     new_relations['eq(%s,%s)' % (attr, attr2)] = attr_val == attr2_val
-
-        print('done with creating new relations')
-        print('# of new relations = %i' % len(new_relations))
-
         for attr in new_relations:
             state[attr] = new_relations[attr]
 
+        from pprint import pprint
+        pprint(state)
+
+        return state
         # convert all attributes to strings
-        return {str(attr): state[attr] for attr in state}
+        # return {str(attr): state[attr] for attr in state}
 
     def step(self, action):
         try:
             s, a, i = self.decode(action)
+
+            print(s, a, i)
             
             if isinstance(s, tuple):
                 if s in self.internal_memory or i == '':
@@ -153,7 +200,7 @@ class BaseOppEnv(gym.Env):
         
         state = self.get_rl_state()
         # pprint(state)
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.fit_transform([state])[0]
         info = {}
 
         return obs, reward, done, info
@@ -191,12 +238,17 @@ class BaseOppEnv(gym.Env):
     def decode(self, action):
         # print(action)
 
-        op = self.get_rl_operators()[action[1]]
-        arg1 = self.possible_args[action[2]]
-        arg2 = self.possible_args[action[3]]
+        op, arg_count = self.get_rl_operators()[action[1]]
+        arg1 = self.tutor.get_possible_args()[action[2]]
+        arg2 = self.tutor.get_possible_args()[action[3]]
 
         if action[0] == len(self.tutor.get_possible_selections()):
-            s = (opp, arg1, arg2)
+            if op == "copy":
+                raise ValueError("cannot copy into internal memory")
+            if arg_count == 1:
+                s = (op, arg1)
+            elif arg_count == 2:
+                s = (op, arg1, arg2)
         else:
             s = self.tutor.get_possible_selections()[action[0]]
 
@@ -220,7 +272,7 @@ class BaseOppEnv(gym.Env):
         self.tutor.set_random_problem()
         state = self.get_rl_state()
         self.internal_memory = {}
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.transform([state])[0]
         return obs
 
     def render(self, mode='human', close=False):

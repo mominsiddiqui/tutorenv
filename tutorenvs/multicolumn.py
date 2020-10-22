@@ -2,6 +2,7 @@ from random import randint
 from random import choice
 from pprint import pprint
 
+import cv2  # pytype:disable=import-error
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
@@ -84,7 +85,9 @@ class MultiColumnAdditionSymbolic:
         if len(lower) == 1:
             lower_ones = lower[0]
 
-        self.steps = 0
+        self.num_correct_steps = 0
+        self.num_incorrect_steps = 0
+
         self.state = {
             'hundreds_carry': '',
             'tens_carry': '',
@@ -129,9 +132,14 @@ class MultiColumnAdditionSymbolic:
             'answer_ones',
             ]
 
-    def render(self):
-        state = {attr: " " if self.state[attr] == '' else self.state[attr] for
-                attr in self.state}
+    def render(self, add_dot=None):
+        img = self.get_image(add_counts=True, add_dot=add_dot)
+        cv2.imshow('vecenv', np.array(img))
+        cv2.waitKey(1)
+
+    def get_image(self, add_counts=False, add_dot=None):
+        state = {attr: " " if self.state[attr] == '' else
+                self.state[attr] for attr in self.state}
 
         output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
                 state["hundreds_carry"],
@@ -149,10 +157,45 @@ class MultiColumnAdditionSymbolic:
                 state["answer_ones"],
                 )
 
-        print("------------------------------------------------------")
-        print(output)
-        print("------------------------------------------------------")
-        print()
+        img = Image.new('RGB', (50, 90), color="white")
+        d = ImageDraw.Draw(img)
+        d.text((10, 10), output, fill='black')
+
+        # Draw input fields
+
+        # ones
+        if state['answer_ones'] == " ":
+            d.rectangle(((34, 71), (38, 79)), fill=None, outline='black')
+        # tens
+        if state['answer_tens'] == " ":
+            d.rectangle(((28, 71), (32, 79)), fill=None, outline='black')
+        # hundreds
+        if state['answer_hundreds'] == " ":
+            d.rectangle(((22, 71), (26, 79)), fill=None, outline='black')
+        # thousands
+        if state['answer_thousands'] == " ":
+            d.rectangle(((16, 71), (20, 79)), fill=None, outline='black')
+
+        # ones carry
+        if state['ones_carry'] == " ":
+            d.rectangle(((28, 11), (32, 19)), fill=None, outline='black')
+        # tens carry
+        if state['tens_carry'] == " ":
+            d.rectangle(((22, 11), (26, 19)), fill=None, outline='black')
+        # hundreds carry
+        if state['hundreds_carry'] == " ":
+            d.rectangle(((16, 11), (20, 19)), fill=None, outline='black')
+
+        # append correct/incorrect counts
+        if add_counts:
+            d.text((0, 0), str(self.num_incorrect_steps), fill="red")
+            d.text((0, 10), str(self.num_correct_steps), fill="green")
+
+        if add_dot:
+            d.ellipse((add_dot[0]-3, add_dot[1]-3, add_dot[0]+3, add_dot[1]+3),
+                    fill=None, outline='blue')
+
+        return img
 
     def get_state(self):
         """
@@ -190,16 +233,20 @@ class MultiColumnAdditionSymbolic:
         """
         Give a SAI, it applies it. This method returns feedback (i.e., -1 or 1).
         """
-        self.steps += 1
         reward = self.evaluate_sai(selection, action, inputs)
+        
+        if reward > 0:
+            self.num_correct_steps += 1
+        else:
+            self.num_incorrect_steps += 1
 
         if reward == -1.0:
             return reward
 
         if selection == "done":
-            print("DONE! Only took %i steps." % self.steps)
-            self.render()
-            print()
+            # print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
+            # self.render()
+            # print()
             # pprint(self.state)
             self.set_random_problem()
 
@@ -381,10 +428,10 @@ class MultiColumnAdditionOppEnv(BaseOppEnv):
 
     def get_rl_operators(self):
         return [
-                'copy',
-                'add',
-                'mod10',
-                'div10',
+                ('copy', 1),
+                ('add', 2),
+                ('mod10', 1),
+                ('div10', 1)
                 ]
 
 class MultiColumnAdditionDigitsEnv(gym.Env):
@@ -402,47 +449,6 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         return training_data
 
     def get_rl_state(self):
-        # self.state = {
-        #     'hundreds_carry': '',
-        #     'tens_carry': '',
-        #     'ones_carry': '',
-        #     'upper_hundreds': upper_hundreds,
-        #     'upper_tens': upper_tens,
-        #     'upper_ones': upper_ones,
-        #     'lower_hundreds': lower_hundreds,
-        #     'lower_tens': lower_tens,
-        #     'lower_ones': lower_ones,
-        #     'operator': '+',
-        #     'answer_thousands': '',
-        #     'answer_hundreds': '',
-        #     'answer_tens': '',
-        #     'answer_ones': ''
-        # }
-        state = {attr: " " if self.tutor.state[attr] == '' else self.tutor.state[attr] for
-                attr in self.tutor.state}
-
-        output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
-                state["hundreds_carry"],
-                state["tens_carry"],
-                state["ones_carry"],
-                state["upper_hundreds"],
-                state["upper_tens"],
-                state["upper_ones"],
-                state["lower_hundreds"],
-                state["lower_tens"],
-                state["lower_ones"],
-                state["answer_thousands"],
-                state["answer_hundreds"],
-                state["answer_tens"],
-                state["answer_ones"],
-                )
-
-        img = Image.new('RGB', (50, 90), color="white")
-        d = ImageDraw.Draw(img)
-        d.text((10, 10), output, fill='black')
-        img.save('test.png')
-        print(np.array(img))
-
         return self.tutor.state
 
     def __init__(self):
@@ -504,46 +510,7 @@ class MultiColumnAdditionPixelEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def get_rl_state(self):
-        # self.state = {
-        #     'hundreds_carry': '',
-        #     'tens_carry': '',
-        #     'ones_carry': '',
-        #     'upper_hundreds': upper_hundreds,
-        #     'upper_tens': upper_tens,
-        #     'upper_ones': upper_ones,
-        #     'lower_hundreds': lower_hundreds,
-        #     'lower_tens': lower_tens,
-        #     'lower_ones': lower_ones,
-        #     'operator': '+',
-        #     'answer_thousands': '',
-        #     'answer_hundreds': '',
-        #     'answer_tens': '',
-        #     'answer_ones': ''
-        # }
-        state = {attr: " " if self.tutor.state[attr] == '' else self.tutor.state[attr] for
-                attr in self.tutor.state}
-
-        output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
-                state["hundreds_carry"],
-                state["tens_carry"],
-                state["ones_carry"],
-                state["upper_hundreds"],
-                state["upper_tens"],
-                state["upper_ones"],
-                state["lower_hundreds"],
-                state["lower_tens"],
-                state["lower_ones"],
-                state["answer_thousands"],
-                state["answer_hundreds"],
-                state["answer_tens"],
-                state["answer_ones"],
-                )
-
-        img = Image.new('RGB', (50, 90), color="white")
-        d = ImageDraw.Draw(img)
-        d.text((10, 10), output, fill='black')
-        img = img.convert('L')
-        # img.save('test.png')
+        img = self.tutor.get_image().convert('L')
         return np.expand_dims(np.array(img)/255, axis=2)
 
     def __init__(self):
@@ -596,4 +563,150 @@ class MultiColumnAdditionPixelEnv(gym.Env):
         return obs
 
     def render(self, mode='human', close=False):
-        self.tutor.render()
+        if mode == "rgb_array":
+            return np.array(self.tutor.get_image(add_counts=True))
+
+        elif mode == "human":
+            self.tutor.render()
+
+class MultiColumnAdditionPerceptEnv(gym.Env):
+    metadata = {'render.modes': ['human']}
+
+    def __init__(self):
+        self.targets = ['answer_ones', 'ones_carry', 'answer_tens',
+                'tens_carry', 'answer_hundreds', 'hundreds_carry',
+                'answer_thousands']
+        self.target_xy = [
+                (36, 83),
+                (30, 15),
+                (30, 83),
+                (24, 15),
+                (24, 83),
+                (18, 15),
+                (18, 83)
+                ]
+
+        self.current_target = 0
+
+        self.set_xy()
+
+        self.tutor = MultiColumnAdditionSymbolic()
+        n_selections = len(self.tutor.get_possible_selections())
+
+        print('shape = ', self.get_rl_state().shape)
+
+        self.observation_space = spaces.Box(low=0.0,
+                high=1.0, shape=self.get_rl_state().shape, dtype=np.float32)
+        # self.action_space = spaces.MultiDiscrete([n_selections, 10])
+        self.action_space = spaces.Discrete(15)
+
+    def set_xy(self):
+        self.x, self.y = self.target_xy[self.current_target]
+
+    def get_rl_state(self):
+        img = self.tutor.get_image().convert('L')
+        x = self.x - 50
+        y = self.y - 90
+
+        translate = img.transform((img.size[0]*2, img.size[1]*2), Image.AFFINE, (1, 0, x, 0, 1, y))
+        # cv2.imshow('translated', np.array(translate))
+        # cv2.waitKey(1)
+        return np.expand_dims(np.array(translate)/255, axis=2)
+
+    def step(self, action):
+        s = None
+        reward = -0.01
+
+        if action == 0:
+            # left
+            self.x -= 5
+        elif action == 1:
+            # right
+            self.x += 5
+        elif action == 2:
+            # up
+            self.y += 5
+        elif action == 3:
+            # down
+            self.y -= 5
+        elif action == 4:
+            s = "done"
+            a = "ButtonPressed"
+            i = -1
+        else:
+
+            # answer fields
+            if self.x >= 34 and self.y >= 71 and self.x <= 38 and self.y <=79:
+                s = "answer_ones"
+            elif self.x >= 28 and self.y >= 71 and self.x <= 32 and self.y <=79:
+                s = "answer_tens"
+            elif self.x >= 22 and self.y >= 71 and self.x <= 26 and self.y <=79:
+                s = "answer_hundreds"
+            elif self.x >= 16 and self.y >= 71 and self.x <= 20 and self.y <=79:
+                s = "answer_thousands"
+
+            # carry fields
+            elif self.x >= 28 and self.y >= 11 and self.x <= 32 and self.y <=19:
+                s = "ones_carry"
+            elif self.x >= 22 and self.y >= 11 and self.x <= 26 and self.y <=19:
+                s = "tens_carry"
+            elif self.x >= 16 and self.y >= 11 and self.x <= 20 and self.y <=19:
+                s = "hundreds_carry"
+
+            a = 'UpdateField'
+            i = {'value': str(action - 5)}
+
+        if s != None:
+            reward = self.tutor.apply_sai(s, a, i)
+
+        self.x = min(max(self.x, 0), 50)
+        self.y = min(max(self.y, 0), 90)
+
+        obs = self.get_rl_state()
+        done = (s == 'done' and reward == 1.0)
+        info = {}
+        return obs, reward, done, info
+
+        # s, a, i = self.decode(action)
+        # # print(s, a, i)
+        # # print()
+        # reward = self.tutor.apply_sai(s, a, i)
+        # # print(reward)
+        # 
+        # obs = self.get_rl_state()
+        # # pprint(state)
+        # info = {}
+
+        return obs, reward, done, info
+
+    def decode(self, action):
+        # print(action)
+        s = self.tutor.get_possible_selections()[action[0]]
+
+        if s == "done":
+            a = "ButtonPressed"
+        else:
+            a = "UpdateField"
+        
+        if s == "done":
+            v = -1
+        if s == "check_convert":
+            v = "x"
+        else:
+            v = action[1]
+
+        i = {'value': str(v)}
+
+        return s, a, i
+
+    def reset(self):
+        self.tutor.set_random_problem()
+        obs = self.get_rl_state()
+        return obs
+
+    def render(self, mode='human', close=False):
+        if mode == "rgb_array":
+            return np.array(self.tutor.get_image(add_counts=True, add_dot=(self.x, self.y)))
+
+        elif mode == "human":
+            self.tutor.render(add_dot=(self.x, self.y))
