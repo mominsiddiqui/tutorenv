@@ -10,7 +10,7 @@ import numpy as np
 if __name__ == "__main__":
 
     # multiprocess environment
-    env = make_vec_env('FractionArith-v1', n_envs=8)
+    env = make_vec_env('FractionArith-v0', n_envs=1)
     model = PPO2(MlpPolicy, env, verbose=1,
             gamma=0.5,
             tensorboard_log="./ppo_FractionArith-v0/")

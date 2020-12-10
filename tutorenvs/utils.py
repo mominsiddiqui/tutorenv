@@ -1,9 +1,152 @@
+import os
+import time
+import uuid
+from datetime import datetime
 from pprint import pprint
 
 import gym
 from gym import error, spaces, utils
 from sklearn.feature_extraction import DictVectorizer
 import numpy as np
+
+class DataShopLogger():
+
+    def __init__(self, domain = "tutorenv", extra_kcs=None):
+        # Create log file
+        if not os.path.exists("log/"):
+            os.mkdir("log/")
+        self.filename = "log/" + domain + "_" + time.strftime("%Y-%m-%d-%H-%M-%s") + ".txt"
+
+        headers = ['Anon Student Id',
+                   'Session Id',
+                   'Transaction Id',
+                   'Time',
+                   'Time Zone',
+                   'Student Response Type',
+                   'Tutor Response Type',
+                   'Level (Domain)',
+                   'Problem Name',
+                   'Problem Start Time',
+                   'Step Name',
+                   'Selection',
+                   'Action',
+                   'Input',
+                   'Feedback Text',
+                   'Outcome',
+                   'CF (Problem Context)',
+                   'KC (Single-KC)']
+
+        if extra_kcs is not None:
+            for kc in extra_kcs:
+                headers.append('KC ({})'.format(kc))
+
+        with open(self.filename, 'a+') as fout:
+            fout.write("\t".join(headers) + "\n")
+
+        self.time = datetime.now().timestamp()
+
+        self.student_id = None
+        self.session_id = None
+        self.level_domain = domain
+        self.timezone = "UTC"
+
+    def set_student(self, student_id=None):
+        if student_id is None:
+            student_id = uuid.uuid4()
+        self.student_id = student_id
+        self.session_id = uuid.uuid4()
+
+    def set_problem(self, problem_name=None):
+        if problem_name is None:
+            problem_name = uuid.uuid4()
+        self.problem_name = problem_name
+        self.time += 1
+        self.problem_start = datetime.fromtimestamp(self.time).strftime('%m/%d/%Y %H:%M:%S')
+        self.step_count = 1
+
+    def log_hint(self, feedback_text, kcs=None):
+        if self.student_id is None:
+            raise Exception("No student ID")
+        if self.problem_name is None:
+            raise Exception("No problem name")
+
+        transaction_id = uuid.uuid4()
+        self.time += 1
+        time = datetime.fromtimestamp(self.time).strftime('%m/%d/%Y %H:%M:%S')
+        student_response = ""
+        tutor_response = "HINT_MSG"
+        self.step_count += 1
+        selection = ""
+        action = ""
+        inp = ""
+        outcome = "HINT"
+
+        datum = [self.student_id,
+                 self.session_id,
+                 transaction_id,
+                 time,
+                 self.timezone,
+                 student_response,
+                 tutor_response,
+                 self.level_domain,
+                 self.problem_name,
+                 self.problem_start,
+                 self.step_count,
+                 selection,
+                 action,
+                 inp,
+                 feedback_text,
+                 outcome,
+                 "",
+                 "Single-KC"]
+
+        if kcs is not None:
+            for kc in kcs:
+                datum.append(kc)
+
+        with open(self.filename, 'a+') as fout:
+            fout.write("\t".join(str(v) for v in datum) + "\n")
+
+    def log_step(self, selection, action, inp, outcome, kcs=None):
+        if self.student_id is None:
+            raise Exception("No student ID")
+        if self.problem_name is None:
+            raise Exception("No problem name")
+
+        transaction_id = uuid.uuid4()
+        self.time += 1
+        time = datetime.fromtimestamp(self.time).strftime('%m/%d/%Y %H:%M:%S')
+        student_response = "ATTEMPT"
+        tutor_response = "HINT_MSG"
+        self.step_count += 1
+        feedback_text = ""
+
+        datum = [self.student_id,
+                 self.session_id,
+                 transaction_id,
+                 time,
+                 self.timezone,
+                 student_response,
+                 tutor_response,
+                 self.level_domain,
+                 self.problem_name,
+                 self.problem_start,
+                 self.step_count,
+                 selection,
+                 action,
+                 inp,
+                 feedback_text,
+                 outcome,
+                 "",
+                 "Single-KC"]
+
+        if kcs is not None:
+            for kc in kcs:
+                datum.append(kc)
+
+        with open(self.filename, 'a+') as fout:
+            fout.write("\t".join(str(v) for v in datum) + "\n")
+
 
 class OnlineDictVectorizer():
 

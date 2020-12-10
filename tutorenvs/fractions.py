@@ -2,12 +2,16 @@ from random import randint
 from random import choice
 from pprint import pprint
 
+import cv2  # pytype:disable=import-error
+from PIL import Image, ImageDraw
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.feature_extraction import DictVectorizer
 import numpy as np
+
+from tutorenvs.utils import DataShopLogger
 
 
 class FractionArithSymbolic:
@@ -16,6 +20,12 @@ class FractionArithSymbolic:
         """
         Creates a state and sets a random problem.
         """
+        self.num_correct_steps = 0
+        self.num_incorrect_steps = 0
+        self.num_hints = 0
+
+        self.logger = DataShopLogger('FractionsTutor', extra_kcs=['ptype_field'])
+        self.logger.set_student()
         self.set_random_problem()
         # self.reset("", "", "", "", "")
 
@@ -65,8 +75,13 @@ class FractionArithSymbolic:
                 'answer_denom'
                 ]
 
-    def render(self):
-        output = "%s\t\t%s\n---\t%s\t---\t=\n%s\t\t%s\n\nConvert? | %s |\n\n%s\t\t%s\t\t%s\n---\t%s\t---\t=\t---\n%s\t\t%s\t\t%s\n" % (self.state['initial_num_left'],
+    def render(self, add_dot=None):
+        img = self.get_image(add_counts=True, add_dot=add_dot)
+        cv2.imshow('vecenv', np.array(img))
+        cv2.waitKey(1)
+
+    def get_image(self, add_counts=False, add_dot=None):
+        output = "{:>3}    {:>3}\n---- {} ---- =\n{:>3}    {:>3}\n\nConvert? | {} |\n\n{:>3}    {:>3}    {:>3}\n---- {} ---- = ----\n{:>3}    {:>3}    {:>3}\n".format(self.state['initial_num_left'],
                 self.state['initial_num_right'],
                 self.state['initial_operator'],
                 self.state['initial_denom_left'],
@@ -80,10 +95,28 @@ class FractionArithSymbolic:
                 self.state['convert_denom_right'],
                 self.state['answer_denom'])
 
-        print("------------------------------------------------------")
-        print(output)
-        print("------------------------------------------------------")
-        print()
+        img = Image.new('RGB', (125, 150), color="white")
+        d = ImageDraw.Draw(img)
+        d.text((10, 10), output, fill='black')
+
+        # Draw input fields
+
+        # ones
+        # if state['answer_ones'] == " ":
+        #     d.rectangle(((34, 71), (38, 79)), fill=None, outline='black')
+
+        # append correct/incorrect counts
+        if add_counts:
+            d.text((100, 0), str(self.num_hints), fill="yellow")
+            d.text((100, 10), str(self.num_incorrect_steps), fill="red")
+            d.text((100, 20), str(self.num_correct_steps), fill="green")
+
+        # for eyes :)
+        # if add_dot:
+        #     d.ellipse((add_dot[0]-3, add_dot[1]-3, add_dot[0]+3, add_dot[1]+3),
+        #             fill=None, outline='blue')
+
+        return img
 
     def get_state(self):
         """
@@ -120,6 +153,14 @@ class FractionArithSymbolic:
         operator = choice(['+', '*'])
 
         self.reset(num1, denom1, operator, num2, denom2)
+        self.logger.set_problem("%s_%s_%s_%s_%s" % (num1, denom1, operator, num2, denom2))
+
+        if operator == "+" and denom1 == denom2:
+            self.ptype = 'AS'
+        if operator == "+" and denom1 != denom2:
+            self.ptype = 'AD'
+        else:
+            self.ptype = 'M'
 
     def apply_sai(self, selection, action, inputs):
         """
@@ -127,6 +168,18 @@ class FractionArithSymbolic:
         """
         self.steps += 1
         reward = self.evaluate_sai(selection, action, inputs)
+        
+        if reward > 0:
+            outcome = "CORRECT"
+            self.num_correct_steps += 1
+        else:
+            outcome = "INCORRECT"
+            self.num_incorrect_steps += 1
+
+        self.logger.log_step(selection, action, inputs['value'], outcome, [self.ptype + '_' + selection])
+
+        # Render output?
+        self.render()
 
         if reward == -1.0:
             return reward
@@ -139,6 +192,7 @@ class FractionArithSymbolic:
 
         else:
             self.state[selection] = inputs['value']
+
 
         return reward
 
@@ -237,6 +291,15 @@ class FractionArithSymbolic:
         raise Exception("evaluate_sai logic missing")
 
     def request_demo(self):
+        demo = self.get_demo()
+        feedback_text = "selection: %s, action: %s, input: %s" % (demo[0],
+                demo[1], demo[2]['value'])
+        self.logger.log_hint(feedback_text, [self.ptype + '_' + demo[0]])
+        self.num_hints += 1
+
+        return demo
+
+    def get_demo(self):
         """
         Returns a correct next-step SAI
         """

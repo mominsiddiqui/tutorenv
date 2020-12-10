@@ -244,7 +244,7 @@ class MultiColumnAdditionSymbolic:
             return reward
 
         if selection == "done":
-            # print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
+            print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
             # self.render()
             # print()
             # pprint(self.state)
@@ -355,68 +355,50 @@ class MultiColumnAdditionSymbolic:
         """
         Returns a correct next-step SAI
         """
-        if (self.state['initial_operator'] == '+' and
-                self.state['initial_denom_left'] == self.state['initial_denom_right']):
-            if self.state['answer_num'] == "":
-                return ('answer_num', "UpdateField",
-                        {'value': str(int(self.state['initial_num_left']) +
-                                      int(self.state['initial_num_right']))})
 
-            if self.state['answer_denom'] == "":
-                return ('answer_denom', "UpdateField",
-                        {'value': self.state['initial_denom_left']})
-
+        if (self.state['answer_ones'] == self.correct_ones and
+                self.state['answer_tens'] == self.correct_tens and
+                self.state['answer_hundreds'] == self.correct_hundreds and
+                self.state['answer_thousands'] == self.correct_thousands):
             return ('done', "ButtonPressed", {'value': -1})
 
-        if (self.state['initial_operator'] == "+" and
-                self.state['initial_denom_left'] != self.state['initial_denom_right']):
-            
-            if self.state['check_convert'] == "":
-                return ('check_convert', 'UpdateField', {"value": 'x'})
+        if self.state['answer_ones'] == '':
+            return ('answer_ones', 'UpdateField', {'value': str(self.correct_ones)})
 
-            if self.state['convert_denom_left'] == "":
-                return ('convert_denom_left', "UpdateField",
-                        {'value': str(int(self.state['initial_denom_left']) *
-                                      int(self.state['initial_denom_right']))})
+        if (self.state["ones_carry"] == '' and
+                len(custom_add(self.state['upper_ones'],
+                    self.state['lower_ones'])) == 2):
+            return ('ones_carry', 'UpdateField',
+                    {'value': custom_add(self.state['upper_ones'],
+                                         self.state['lower_ones'])[0]})
 
-            if self.state['convert_num_left'] == "":
-                return ('convert_num_left', "UpdateField",
-                        {'value': str(int(self.state['initial_num_left']) *
-                                      int(self.state['initial_denom_right']))})
+        if self.state['answer_tens'] == '':
+            return ('answer_tens', 'UpdateField', {'value': str(self.correct_tens)})
 
-            if self.state['convert_denom_right'] == "":
-                return ('convert_denom_right', "UpdateField",
-                        {'value': str(int(self.state['initial_denom_left']) *
-                                      int(self.state['initial_denom_right']))})
+        if self.state["tens_carry"] == '':
+            if (len(custom_add(custom_add(self.state['upper_tens'],
+                self.state['lower_tens']), self.state['ones_carry'])) == 2):
+                return ('tens_carry', 'UpdateField',
+                        {'value':
+                         custom_add(custom_add(self.state['upper_tens'],
+                                               self.state['lower_tens']),
+                                    self.state['ones_carry'])[0]})
 
-            if self.state['convert_num_right'] == "":
-                return ('convert_num_right', "UpdateField",
-                        {'value': str(int(self.state['initial_denom_left']) *
-                                      int(self.state['initial_num_right']))})
+        if self.state['answer_hundreds'] == '':
+            return ('answer_hundreds', 'UpdateField', {'value': str(self.correct_hundreds)})
 
-            if self.state['answer_num'] == "":
-                return ('answer_num', "UpdateField",
-                        {'value': str(int(self.state['convert_num_left']) +
-                                      int(self.state['convert_num_right']))})
+        if self.state["hundreds_carry"] == '':
+            if (len(custom_add(custom_add(self.state['upper_hundreds'],
+                                          self.state['lower_hundreds']),
+                               self.state['tens_carry'])) == 2):
+                return ('hundreds_carry', 'UpdateField',
+                        {'value':
+                         custom_add(custom_add(self.state['upper_hundreds'],
+                                               self.state['lower_hundreds']),
+                                    self.state['tens_carry'])[0]})
 
-            if self.state['answer_denom'] == "":
-                return ('answer_denom', "UpdateField",
-                        {'value': self.state['convert_denom_right']})
-
-            return ('done', "ButtonPressed", {'value': -1})
-
-        if (self.state['initial_operator'] == "*"):
-            if self.state['answer_num'] == "":
-                return ('answer_num', "UpdateField",
-                        {'value': str(int(self.state['initial_num_left']) *
-                                      int(self.state['initial_num_right']))})
-
-            if self.state['answer_denom'] == "":
-                return ('answer_denom', "UpdateField",
-                        {'value': str(int(self.state['initial_denom_left']) *
-                                      int(self.state['initial_denom_right']))})
-
-            return ('done', "ButtonPressed", {'value': -1})
+        if self.state['answer_thousands'] == '':
+            return ('answer_thousands', 'UpdateField', {'value': str(self.correct_thousands)})
 
         raise Exception("request demo - logic missing")
 
@@ -511,7 +493,7 @@ class MultiColumnAdditionPixelEnv(gym.Env):
 
     def get_rl_state(self):
         img = self.tutor.get_image().convert('L')
-        return np.expand_dims(np.array(img)/255, axis=2)
+        return np.expand_dims(np.array(img), axis=2)
 
     def __init__(self):
         self.tutor = MultiColumnAdditionSymbolic()
@@ -519,8 +501,8 @@ class MultiColumnAdditionPixelEnv(gym.Env):
 
         print('shape = ', self.get_rl_state().shape)
 
-        self.observation_space = spaces.Box(low=0.0,
-                high=1.0, shape=self.get_rl_state().shape, dtype=np.float32)
+        self.observation_space = spaces.Box(low=0,
+                high=255, shape=self.get_rl_state().shape, dtype=np.uint8)
         self.action_space = spaces.MultiDiscrete([n_selections, 10])
 
     def step(self, action):
@@ -577,13 +559,13 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
                 'tens_carry', 'answer_hundreds', 'hundreds_carry',
                 'answer_thousands']
         self.target_xy = [
-                (36, 83),
+                (36, 75),
                 (30, 15),
-                (30, 83),
+                (30, 75),
                 (24, 15),
-                (24, 83),
+                (24, 75),
                 (18, 15),
-                (18, 83)
+                (18, 75)
                 ]
 
         self.current_target = 0
@@ -595,41 +577,52 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
 
         print('shape = ', self.get_rl_state().shape)
 
-        self.observation_space = spaces.Box(low=0.0,
-                high=1.0, shape=self.get_rl_state().shape, dtype=np.float32)
+        self.observation_space = spaces.Box(low=0,
+                high=255, shape=self.get_rl_state().shape, dtype=np.uint8)
         # self.action_space = spaces.MultiDiscrete([n_selections, 10])
-        self.action_space = spaces.Discrete(15)
+        self.action_space = spaces.Discrete(12)
 
     def set_xy(self):
         self.x, self.y = self.target_xy[self.current_target]
 
     def get_rl_state(self):
         img = self.tutor.get_image().convert('L')
-        x = self.x - 50
-        y = self.y - 90
+        x_multiplier = 0.75 
+        y_multiplier = 1.5
+        x = round(self.x - (25 * x_multiplier))
+        y = round(self.y - (45 * y_multiplier))
 
-        translate = img.transform((img.size[0]*2, img.size[1]*2), Image.AFFINE, (1, 0, x, 0, 1, y))
-        # cv2.imshow('translated', np.array(translate))
-        # cv2.waitKey(1)
-        return np.expand_dims(np.array(translate)/255, axis=2)
+        translate = img.transform((round(img.size[0]*x_multiplier),
+            round(img.size[1]*y_multiplier)), Image.AFFINE, (1, 0, x, 0, 1, y), fillcolor='white')
+
+        # Pretty output
+        cv2.imshow('translated', np.array(translate))
+        cv2.waitKey(1)
+        self.render()
+
+        return np.expand_dims(np.array(translate), axis=2)
 
     def step(self, action):
         s = None
-        reward = -0.01
+        reward = -1
 
+        # if action == 0:
+        #     # left
+        #     self.x -= 5
+        # elif action == 1:
+        #     # right
+        #     self.x += 5
+        # elif action == 2:
+        #     # up
+        #     self.y += 5
+        # elif action == 3:
+        #     # down
+        #     self.y -= 5
         if action == 0:
-            # left
-            self.x -= 5
+            self.current_target = (self.current_target + 1) % len(self.targets)
+            self.set_xy()
+
         elif action == 1:
-            # right
-            self.x += 5
-        elif action == 2:
-            # up
-            self.y += 5
-        elif action == 3:
-            # down
-            self.y -= 5
-        elif action == 4:
             s = "done"
             a = "ButtonPressed"
             i = -1
@@ -654,10 +647,21 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
                 s = "hundreds_carry"
 
             a = 'UpdateField'
-            i = {'value': str(action - 5)}
+            i = {'value': str(action - 2)}
 
         if s != None:
             reward = self.tutor.apply_sai(s, a, i)
+
+        # code to skip completed fields
+        # skipper = 0
+        # original_target = self.current_target
+        # while self.tutor.state[self.targets[self.current_target]] != '':
+        #     self.current_target = (self.current_target + 1) % len(self.targets)
+        #     skipper += 1
+        #     if skipper > 7:
+        #         self.current_target = original_target
+        #         break
+        # self.set_xy()
 
         self.x = min(max(self.x, 0), 50)
         self.y = min(max(self.y, 0), 90)
@@ -665,17 +669,8 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
         obs = self.get_rl_state()
         done = (s == 'done' and reward == 1.0)
         info = {}
-        return obs, reward, done, info
 
-        # s, a, i = self.decode(action)
-        # # print(s, a, i)
-        # # print()
-        # reward = self.tutor.apply_sai(s, a, i)
-        # # print(reward)
-        # 
-        # obs = self.get_rl_state()
-        # # pprint(state)
-        # info = {}
+        # self.render()
 
         return obs, reward, done, info
 
