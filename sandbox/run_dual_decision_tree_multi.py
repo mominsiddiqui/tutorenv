@@ -14,12 +14,19 @@ from tutorenvs.utils import DataShopLogger
 
 def train_tree(n=10, logger=None):
     X = []
-    y = []
+    y_sel = []
+    y_inp = []
     dv = DictVectorizer()
-    actions = []
-    action_mapping = {}
-    rev_action_mapping = {}
-    tree = DecisionTreeClassifier()
+    selections = []
+    selection_mapping = {}
+    rev_selection_mapping = {}
+    selection_tree = DecisionTreeClassifier()
+
+    inputs = []
+    input_mapping = {}
+    rev_input_mapping = {}
+    input_tree = DecisionTreeClassifier()
+
     env = MultiColumnAdditionSymbolic(logger=logger)
 
     p = 0
@@ -28,11 +35,17 @@ def train_tree(n=10, logger=None):
         state = {a: env.state[a] for a in env.state}
         env.render()
 
-        if rev_action_mapping == {}:
+        if rev_selection_mapping == {}:
             sai = None
         else:
             vstate = dv.transform([state])
-            sai = rev_action_mapping[tree.predict(vstate)[0]]
+            sel = rev_selection_mapping[selection_tree.predict(vstate)[0]]
+            if sel == 'done':
+                act = 'ButtonPressed'
+            else:
+                act = "UpdateField"
+            inp = rev_input_mapping[input_tree.predict(vstate)[0]]
+            sai = (sel, act, inp)
 
         if sai is None:
             print('hint')
@@ -49,26 +62,36 @@ def train_tree(n=10, logger=None):
             reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
 
         X.append(state)
-        y.append(sai)
+        y_sel.append(sai[0])
+        y_inp.append(sai[2])
 
         Xv = dv.fit_transform(X)
-        actions = list(set(y))
-        action_mapping = {l: i for i, l in enumerate(actions)}
-        rev_action_mapping = {i: l for i, l in enumerate(actions)}
-        yv = [action_mapping[l] for l in y]
 
-        tree.fit(Xv, yv)
+        selections = list(set(y_sel))
+        selection_mapping = {l: i for i, l in enumerate(selections)}
+        rev_selection_mapping = {i: l for i, l in enumerate(selections)}
+
+        inputs = list(set(y_inp))
+        input_mapping = {l: i for i, l in enumerate(inputs)}
+        rev_input_mapping = {i: l for i, l in enumerate(inputs)}
+
+        yv_sel = [selection_mapping[l] for l in y_sel]
+        yv_inp = [input_mapping[l] for l in y_inp]
+
+        selection_tree.fit(Xv, yv_sel)
+        input_tree.fit(Xv, yv_inp)
 
         if sai[0] == "done" and reward == 1.0:
+            print("Problem %s of %s" % (p, n))
             p += 1
 
-    return tree
+    return selection_tree, input_tree
 
 if __name__ == "__main__":
 
     logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
-    for _ in range(10):
-        tree = train_tree(100, logger)
+    for _ in range(1):
+        tree = train_tree(1000, logger)
     # env = MultiColumnAdditionSymbolic()
 
     # while True:

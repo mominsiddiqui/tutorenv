@@ -6,60 +6,57 @@ import tutorenvs
 from tutorenvs.multicolumn import MultiColumnAdditionDigitsEnv
 from tutorenvs.multicolumn import MultiColumnAdditionSymbolic
 import numpy as np
+from pprint import pprint
 
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.feature_extraction import DictVectorizer
+from concept_formation.cobweb3 import Cobweb3Tree
+from concept_formation.visualize import visualize
 
 from tutorenvs.utils import DataShopLogger
 
 def train_tree(n=10, logger=None):
-    X = []
-    y = []
-    dv = DictVectorizer()
-    actions = []
-    action_mapping = {}
-    rev_action_mapping = {}
-    tree = DecisionTreeClassifier()
+    tree = Cobweb3Tree()
     env = MultiColumnAdditionSymbolic(logger=logger)
 
     p = 0
+    nhints = 0
     while p < n:
         # make a copy of the state
         state = {a: env.state[a] for a in env.state}
         env.render()
 
-        if rev_action_mapping == {}:
-            sai = None
-        else:
-            vstate = dv.transform([state])
-            sai = rev_action_mapping[tree.predict(vstate)[0]]
+        concept = tree.categorize(state)
+        sel = concept.predict('selection')
+        inp = concept.predict('input')
 
-        if sai is None:
-            print('hint')
+        if sel == "done":
+            act = 'ButtonPressed'
+        else:
+            act = "UpdateField"
+
+        sai = (sel, act, inp)
+
+        if sel is None or inp is None:
+            nhints += 1
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
 
         reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
-        print('reward', reward)
+        # print('reward', reward)
 
         if reward < 0:
-            print('hint')
+            nhints += 1
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
             reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
 
-        X.append(state)
-        y.append(sai)
-
-        Xv = dv.fit_transform(X)
-        actions = list(set(y))
-        action_mapping = {l: i for i, l in enumerate(actions)}
-        rev_action_mapping = {i: l for i, l in enumerate(actions)}
-        yv = [action_mapping[l] for l in y]
-
-        tree.fit(Xv, yv)
-
+        state['selection'] = sai[0]
+        state['input'] = str(sai[2])
+        tree.ifit(state)
+        
         if sai[0] == "done" and reward == 1.0:
+            print('# hints =', nhints)
+            nhints = 0
+            print("Problem %s of %s" % (p, n))
             p += 1
 
     return tree
@@ -67,8 +64,10 @@ def train_tree(n=10, logger=None):
 if __name__ == "__main__":
 
     logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
-    for _ in range(10):
-        tree = train_tree(100, logger)
+    for _ in range(1):
+        tree = train_tree(200, logger)
+    visualize(tree)
+
     # env = MultiColumnAdditionSymbolic()
 
     # while True:

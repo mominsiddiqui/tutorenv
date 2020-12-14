@@ -19,7 +19,8 @@ def train_tree(n=10, logger=None):
     actions = []
     action_mapping = {}
     rev_action_mapping = {}
-    tree = DecisionTreeClassifier()
+    selection_tree = DecisionTreeClassifier()
+    input_tree = DecisionTreeClassifier()
     env = MultiColumnAdditionSymbolic(logger=logger)
 
     p = 0
@@ -52,7 +53,7 @@ def train_tree(n=10, logger=None):
         y.append(sai)
 
         Xv = dv.fit_transform(X)
-        actions = list(set(y))
+        actions = set(y)
         action_mapping = {l: i for i, l in enumerate(actions)}
         rev_action_mapping = {i: l for i, l in enumerate(actions)}
         yv = [action_mapping[l] for l in y]

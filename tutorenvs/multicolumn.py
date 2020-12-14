@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from tutorenvs.utils import BaseOppEnv
+from tutorenvs.utils import DataShopLogger
 
 def custom_add(a, b):
     if a == '':
@@ -22,10 +23,16 @@ def custom_add(a, b):
 
 class MultiColumnAdditionSymbolic:
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """
         Creates a state and sets a random problem.
         """
+        if logger is None:
+            print("CREATING LOGGER")
+            self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+        else:
+            self.logger = logger
+        self.logger.set_student()
         self.set_random_problem()
         # self.reset("", "", "", "", "")
 
@@ -87,6 +94,7 @@ class MultiColumnAdditionSymbolic:
 
         self.num_correct_steps = 0
         self.num_incorrect_steps = 0
+        self.num_hints = 0
 
         self.state = {
             'hundreds_carry': '',
@@ -190,6 +198,7 @@ class MultiColumnAdditionSymbolic:
         if add_counts:
             d.text((0, 0), str(self.num_incorrect_steps), fill="red")
             d.text((0, 10), str(self.num_correct_steps), fill="green")
+            d.text((0, 20), str(self.num_hints), fill="blue")
 
         if add_dot:
             d.ellipse((add_dot[0]-3, add_dot[1]-3, add_dot[0]+3, add_dot[1]+3),
@@ -225,9 +234,12 @@ class MultiColumnAdditionSymbolic:
         return state_output
 
     def set_random_problem(self):
-        upper = str(randint(1,999))
-        lower = str(randint(1,999))
+        # upper = str(randint(1,999))
+        # lower = str(randint(1,999))
+        upper = str(randint(1,9))
+        lower = str(randint(1,9))
         self.reset(upper=upper, lower=lower)
+        self.logger.set_problem("%s_%s" % (upper, lower))
 
     def apply_sai(self, selection, action, inputs):
         """
@@ -236,9 +248,13 @@ class MultiColumnAdditionSymbolic:
         reward = self.evaluate_sai(selection, action, inputs)
         
         if reward > 0:
+            outcome = "CORRECT"
             self.num_correct_steps += 1
         else:
+            outcome = "INCORRECT"
             self.num_incorrect_steps += 1
+
+        self.logger.log_step(selection, action, inputs['value'], outcome, [selection])
 
         if reward == -1.0:
             return reward
@@ -352,6 +368,15 @@ class MultiColumnAdditionSymbolic:
 
     # TODO still need to rewrite for multi column arith
     def request_demo(self):
+        demo = self.get_demo()
+        feedback_text = "selection: %s, action: %s, input: %s" % (demo[0],
+                demo[1], demo[2]['value'])
+        self.logger.log_hint(feedback_text, [demo[0]])
+        self.num_hints += 1
+
+        return demo
+
+    def get_demo(self):
         """
         Returns a correct next-step SAI
         """
