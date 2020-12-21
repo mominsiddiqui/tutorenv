@@ -176,7 +176,9 @@ class FractionArithSymbolic:
             outcome = "INCORRECT"
             self.num_incorrect_steps += 1
 
-        self.logger.log_step(selection, action, inputs['value'], outcome, [self.ptype + '_' + selection])
+        self.logger.log_step(selection, action, inputs['value'], outcome,
+                             step_name=self.ptype + '_' + demo[0],
+                             kcs=[self.ptype + '_' + selection])
 
         # Render output?
         self.render()
@@ -294,7 +296,8 @@ class FractionArithSymbolic:
         demo = self.get_demo()
         feedback_text = "selection: %s, action: %s, input: %s" % (demo[0],
                 demo[1], demo[2]['value'])
-        self.logger.log_hint(feedback_text, [self.ptype + '_' + demo[0]])
+        self.logger.log_hint(feedback_text, step_name=self.ptype + '_' +
+                             demo[0], kcs=[self.ptype + '_' + demo[0]])
         self.num_hints += 1
 
         return demo

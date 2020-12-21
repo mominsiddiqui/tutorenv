@@ -30,7 +30,10 @@ def train_tree(n=10, logger=None):
     env = MultiColumnAdditionSymbolic(logger=logger)
 
     p = 0
+    hints = 0
+
     while p < n:
+
         # make a copy of the state
         state = {a: env.state[a] for a in env.state}
         env.render()
@@ -48,15 +51,17 @@ def train_tree(n=10, logger=None):
             sai = (sel, act, inp)
 
         if sai is None:
-            print('hint')
+            hints += 1
+            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
 
         reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
-        print('reward', reward)
+        # print('reward', reward)
 
         if reward < 0:
-            print('hint')
+            hints += 1
+            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
             reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
@@ -83,6 +88,8 @@ def train_tree(n=10, logger=None):
 
         if sai[0] == "done" and reward == 1.0:
             print("Problem %s of %s" % (p, n))
+            print("# of hints = {}".format(hints))
+            hints = 0
             p += 1
 
     return selection_tree, input_tree
@@ -91,7 +98,7 @@ if __name__ == "__main__":
 
     logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
     for _ in range(1):
-        tree = train_tree(1000, logger)
+        tree = train_tree(500, logger)
     # env = MultiColumnAdditionSymbolic()
 
     # while True:

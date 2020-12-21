@@ -9,6 +9,25 @@ from gym import error, spaces, utils
 from sklearn.feature_extraction import DictVectorizer
 import numpy as np
 
+
+class StubLogger():
+
+    def __init__(self):
+        pass
+
+    def set_student(self, student_id=None):
+        pass
+
+    def set_problem(self, problem_name=None):
+        pass
+
+    def log_hint(self, feedback_text="", step_name=None, kcs=None):
+        pass
+
+    def log_step(self, selection="", action="", inp="", outcome="", step_name=None, kcs=None):
+        pass
+
+
 class DataShopLogger():
 
     def __init__(self, domain = "tutorenv", extra_kcs=None):
@@ -64,7 +83,7 @@ class DataShopLogger():
         self.problem_start = datetime.fromtimestamp(self.time).strftime('%m/%d/%Y %H:%M:%S')
         self.step_count = 1
 
-    def log_hint(self, feedback_text, kcs=None):
+    def log_hint(self, feedback_text, step_name=None, kcs=None):
         if self.student_id is None:
             raise Exception("No student ID")
         if self.problem_name is None:
@@ -81,6 +100,9 @@ class DataShopLogger():
         inp = ""
         outcome = "HINT"
 
+        if step_name is None:
+            step_name = self.step_count
+
         datum = [self.student_id,
                  self.session_id,
                  transaction_id,
@@ -91,7 +113,8 @@ class DataShopLogger():
                  self.level_domain,
                  self.problem_name,
                  self.problem_start,
-                 self.step_count,
+                 #self.step_count,
+                 step_name,
                  selection,
                  action,
                  inp,
@@ -107,7 +130,7 @@ class DataShopLogger():
         with open(self.filename, 'a+') as fout:
             fout.write("\t".join(str(v) for v in datum) + "\n")
 
-    def log_step(self, selection, action, inp, outcome, kcs=None):
+    def log_step(self, selection, action, inp, outcome, step_name=None, kcs=None):
         if self.student_id is None:
             raise Exception("No student ID")
         if self.problem_name is None:
@@ -121,6 +144,9 @@ class DataShopLogger():
         self.step_count += 1
         feedback_text = ""
 
+        if step_name is None:
+            step_name = self.step_count
+
         datum = [self.student_id,
                  self.session_id,
                  transaction_id,
@@ -131,7 +157,7 @@ class DataShopLogger():
                  self.level_domain,
                  self.problem_name,
                  self.problem_start,
-                 self.step_count,
+                 step_name,
                  selection,
                  action,
                  inp,
@@ -147,6 +173,34 @@ class DataShopLogger():
         with open(self.filename, 'a+') as fout:
             fout.write("\t".join(str(v) for v in datum) + "\n")
 
+class MultiDiscreteToDiscreteWrapper(gym.ActionWrapper):
+
+    def __init__(self, env):
+        super().__init__(env)
+        assert isinstance(env.action_space, gym.spaces.MultiDiscrete), \
+            "Should only be used to wrap envs with MuliDiscrete actions."
+        self.action_vec = self.action_space.nvec
+        self.action_space = gym.spaces.Discrete(np.prod(self.action_vec))
+
+    # def convert(act):
+    #     discrete_act = 0
+    #     for i, v in enumerate(act):
+    #         discrete_act += (v * np.prod(self.action_vec[i+1:]))
+    #     return discrete_act
+
+    # def unconvert(discrete_act):
+    #     act = np.zeros_like(self.action_vec)
+    #     for i in range(len(self.action_vec)):
+    #         act[i] = discrete_act // np.prod(self.action_vec[i+1:])
+    #         discrete_act = discrete_act % np.prod(self.action_vec[i+1:])
+    #     return act
+
+    def action(self, discrete_act):
+        act = np.zeros_like(self.action_vec)
+        for i in range(len(self.action_vec)):
+            act[i] = discrete_act // np.prod(self.action_vec[i+1:])
+            discrete_act = discrete_act % np.prod(self.action_vec[i+1:])
+        return act
 
 class OnlineDictVectorizer():
 

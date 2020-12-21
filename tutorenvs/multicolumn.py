@@ -11,8 +11,9 @@ from sklearn.feature_extraction import DictVectorizer
 import numpy as np
 from PIL import Image, ImageDraw
 
-from tutorenvs.utils import BaseOppEnv
+from tutorenvs.utils import OnlineDictVectorizer
 from tutorenvs.utils import DataShopLogger
+from tutorenvs.utils import StubLogger
 
 def custom_add(a, b):
     if a == '':
@@ -29,7 +30,8 @@ class MultiColumnAdditionSymbolic:
         """
         if logger is None:
             print("CREATING LOGGER")
-            self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+            # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+            self.logger = StubLogger()
         else:
             self.logger = logger
         self.logger.set_student()
@@ -234,10 +236,12 @@ class MultiColumnAdditionSymbolic:
         return state_output
 
     def set_random_problem(self):
-        # upper = str(randint(1,999))
-        # lower = str(randint(1,999))
-        upper = str(randint(1,9))
-        lower = str(randint(1,9))
+        upper = str(randint(1,999))
+        lower = str(randint(1,999))
+        # upper = str(randint(1,99))
+        # lower = str(randint(1,99))
+        # upper = str(randint(1,9))
+        # lower = str(randint(1,9))
         self.reset(upper=upper, lower=lower)
         self.logger.set_problem("%s_%s" % (upper, lower))
 
@@ -254,13 +258,13 @@ class MultiColumnAdditionSymbolic:
             outcome = "INCORRECT"
             self.num_incorrect_steps += 1
 
-        self.logger.log_step(selection, action, inputs['value'], outcome, [selection])
+        self.logger.log_step(selection, action, inputs['value'], outcome, step_name=selection, kcs=[selection])
 
         if reward == -1.0:
             return reward
 
         if selection == "done":
-            print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
+            # print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
             # self.render()
             # print()
             # pprint(self.state)
@@ -371,7 +375,7 @@ class MultiColumnAdditionSymbolic:
         demo = self.get_demo()
         feedback_text = "selection: %s, action: %s, input: %s" % (demo[0],
                 demo[1], demo[2]['value'])
-        self.logger.log_hint(feedback_text, [demo[0]])
+        self.logger.log_hint(feedback_text, step_name=demo[0], kcs=[demo[0]])
         self.num_hints += 1
 
         return demo
@@ -428,58 +432,42 @@ class MultiColumnAdditionSymbolic:
         raise Exception("request demo - logic missing")
 
 
-class MultiColumnAdditionOppEnv(BaseOppEnv):
-
-    def __init__(self):
-        super().__init__(MultiColumnAdditionSymbolic, max_depth=2)
-
-    def get_rl_operators(self):
-        return [
-                ('copy', 1),
-                ('add', 2),
-                ('mod10', 1),
-                ('div10', 1)
-                ]
-
 class MultiColumnAdditionDigitsEnv(gym.Env):
     metadata = {'render.modes': ['human']}
-
-    def get_dv_training(self):
-        empty = {attr: '' for attr in self.tutor.state if attr != 'operator'}
-
-        training_data = [empty]
-
-        for i in range(1, 10):
-            s = {attr: str(i) for attr in self.tutor.state if attr != 'operator'}
-            training_data.append(s)
-
-        return training_data
-
-    def get_rl_state(self):
-        return self.tutor.state
 
     def __init__(self):
         self.tutor = MultiColumnAdditionSymbolic()
         n_selections = len(self.tutor.get_possible_selections())
-        self.dv = DictVectorizer()
-        transformed_training = self.dv.fit_transform(self.get_dv_training())
-        n_features = transformed_training.shape[1]
-
+        n_features = 110
+        self.dv = OnlineDictVectorizer(n_features)
         self.observation_space = spaces.Box(low=0.0,
                 high=1.0, shape=(1, n_features), dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([n_selections, 10])
+        self.n_steps = 0
+        self.max_steps = 5000
+
+    def get_rl_state(self):
+        return self.tutor.state
 
     def step(self, action):
+        self.n_steps += 1
+
         s, a, i = self.decode(action)
         # print(s, a, i)
         # print()
         reward = self.tutor.apply_sai(s, a, i)
+        # self.render()
         # print(reward)
-        
-        state = self.get_rl_state()
+        state = self.tutor.state
         # pprint(state)
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.fit_transform([state])[0]
         done = (s == 'done' and reward == 1.0)
+
+        # have a max steps for a given problem.
+        # When we hit that we're done regardless.
+        if self.n_steps > self.max_steps:
+            done = True
+
         info = {}
 
         return obs, reward, done, info
@@ -505,9 +493,11 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         return s, a, i
 
     def reset(self):
+        self.n_steps = 0
         self.tutor.set_random_problem()
+        # self.render()
         state = self.get_rl_state()
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.fit_transform([state])[0]
         return obs
 
     def render(self, mode='human', close=False):

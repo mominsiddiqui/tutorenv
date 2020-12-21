@@ -17,19 +17,15 @@ if __name__ == "__main__":
             tensorboard_log="./tensorboard/v0/")
 
     while True:
+        # Train
         model.learn(total_timesteps=100)
 
-        # To demonstrate saving and loading
-        # model.save("ppo2_multicolumn-v0")
-        # del model
-        # model = PPO2.load("ppo2_multicolumn-v0")
-
-        # Enjoy trained agent
-        obs = env.reset()
-        rwd = 0
-        for _ in range(10000):
-            action, _states = model.predict(obs)
-            obs, rewards, dones, info = env.step(action)
-            rwd += np.sum(rewards)
-            env.render()
-        print(rwd)
+        # Test
+        # obs = env.reset()
+        # rwd = 0
+        # for _ in range(10000):
+        #     action, _states = model.predict(obs)
+        #     obs, rewards, dones, info = env.step(action)
+        #     rwd += np.sum(rewards)
+        #     env.render()
+        # print(rwd)

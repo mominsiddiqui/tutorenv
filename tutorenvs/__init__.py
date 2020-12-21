@@ -1,7 +1,6 @@
 from gym.envs.registration import register
 from tutorenvs.fractions import FractionArithDigitsEnv
 from tutorenvs.fractions import FractionArithOppEnv
-from tutorenvs.multicolumn import MultiColumnAdditionOppEnv
 from tutorenvs.multicolumn import MultiColumnAdditionDigitsEnv
 from tutorenvs.multicolumn import MultiColumnAdditionPixelEnv
 from tutorenvs.multicolumn import MultiColumnAdditionPerceptEnv
@@ -23,21 +22,16 @@ register(
 # )
 
 register(
-    id='MultiColumnArith-v0',
-    entry_point='tutorenvs:MultiColumnAdditionOppEnv',
-)
-
-register(
-    id='MultiColumnArith-v1',
+    id='MulticolumnArithSymbolic-v0',
     entry_point='tutorenvs:MultiColumnAdditionDigitsEnv',
 )
 
 register(
-    id='MultiColumnArith-v2',
+    id='MulticolumnArithPixel-v0',
     entry_point='tutorenvs:MultiColumnAdditionPixelEnv',
 )
 
 register(
-    id='MultiColumnArith-v3',
+    id='MulticolumnArithPercept-v0',
     entry_point='tutorenvs:MultiColumnAdditionPerceptEnv',
 )
