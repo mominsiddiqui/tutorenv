@@ -1,3 +1,6 @@
 gym
-stable-baselines
-tensorflow==1.15
+stable-baselines3
+optuna
+opencv-python
+sklearn
+# tensorflow==1.15
