@@ -2,17 +2,19 @@ import os
 import time
 import uuid
 from datetime import datetime
-from pprint import pprint
+import logging
 
 import gym
-from gym import error, spaces, utils
-from sklearn.feature_extraction import DictVectorizer
+from gym import spaces
 import numpy as np
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
 
 
 class StubLogger():
-
     def __init__(self):
+        log.info("StubLogger Created")
         pass
 
     def set_student(self, student_id=None):
@@ -24,36 +26,32 @@ class StubLogger():
     def log_hint(self, feedback_text="", step_name=None, kcs=None):
         pass
 
-    def log_step(self, selection="", action="", inp="", outcome="", step_name=None, kcs=None):
+    def log_step(self,
+                 selection="",
+                 action="",
+                 inp="",
+                 outcome="",
+                 step_name=None,
+                 kcs=None):
         pass
 
 
 class DataShopLogger():
-
-    def __init__(self, domain = "tutorenv", extra_kcs=None):
+    def __init__(self, domain="tutorenv", extra_kcs=None):
+        log.info("DataShop Logger Created")
         # Create log file
         if not os.path.exists("log/"):
             os.mkdir("log/")
-        self.filename = "log/" + domain + "_" + time.strftime("%Y-%m-%d-%H-%M-%s") + ".txt"
+        self.filename = "log/" + domain + "_" + time.strftime(
+            "%Y-%m-%d-%H-%M-%s") + ".txt"
 
-        headers = ['Anon Student Id',
-                   'Session Id',
-                   'Transaction Id',
-                   'Time',
-                   'Time Zone',
-                   'Student Response Type',
-                   'Tutor Response Type',
-                   'Level (Domain)',
-                   'Problem Name',
-                   'Problem Start Time',
-                   'Step Name',
-                   'Selection',
-                   'Action',
-                   'Input',
-                   'Feedback Text',
-                   'Outcome',
-                   'CF (Problem Context)',
-                   'KC (Single-KC)']
+        headers = [
+            'Anon Student Id', 'Session Id', 'Transaction Id', 'Time',
+            'Time Zone', 'Student Response Type', 'Tutor Response Type',
+            'Level (Domain)', 'Problem Name', 'Problem Start Time',
+            'Step Name', 'Selection', 'Action', 'Input', 'Feedback Text',
+            'Outcome', 'CF (Problem Context)', 'KC (Single-KC)'
+        ]
 
         if extra_kcs is not None:
             for kc in extra_kcs:
@@ -80,7 +78,8 @@ class DataShopLogger():
             problem_name = uuid.uuid4()
         self.problem_name = problem_name
         self.time += 1
-        self.problem_start = datetime.fromtimestamp(self.time).strftime('%m/%d/%Y %H:%M:%S')
+        self.problem_start = datetime.fromtimestamp(
+            self.time).strftime('%m/%d/%Y %H:%M:%S')
         self.step_count = 1
 
     def log_hint(self, feedback_text, step_name=None, kcs=None):
@@ -103,25 +102,27 @@ class DataShopLogger():
         if step_name is None:
             step_name = self.step_count
 
-        datum = [self.student_id,
-                 self.session_id,
-                 transaction_id,
-                 time,
-                 self.timezone,
-                 student_response,
-                 tutor_response,
-                 self.level_domain,
-                 self.problem_name,
-                 self.problem_start,
-                 #self.step_count,
-                 step_name,
-                 selection,
-                 action,
-                 inp,
-                 feedback_text,
-                 outcome,
-                 "",
-                 "Single-KC"]
+        datum = [
+            self.student_id,
+            self.session_id,
+            transaction_id,
+            time,
+            self.timezone,
+            student_response,
+            tutor_response,
+            self.level_domain,
+            self.problem_name,
+            self.problem_start,
+            # self.step_count,
+            step_name,
+            selection,
+            action,
+            inp,
+            feedback_text,
+            outcome,
+            "",
+            "Single-KC"
+        ]
 
         if kcs is not None:
             for kc in kcs:
@@ -130,7 +131,13 @@ class DataShopLogger():
         with open(self.filename, 'a+') as fout:
             fout.write("\t".join(str(v) for v in datum) + "\n")
 
-    def log_step(self, selection, action, inp, outcome, step_name=None, kcs=None):
+    def log_step(self,
+                 selection,
+                 action,
+                 inp,
+                 outcome,
+                 step_name=None,
+                 kcs=None):
         if self.student_id is None:
             raise Exception("No student ID")
         if self.problem_name is None:
@@ -147,24 +154,12 @@ class DataShopLogger():
         if step_name is None:
             step_name = self.step_count
 
-        datum = [self.student_id,
-                 self.session_id,
-                 transaction_id,
-                 time,
-                 self.timezone,
-                 student_response,
-                 tutor_response,
-                 self.level_domain,
-                 self.problem_name,
-                 self.problem_start,
-                 step_name,
-                 selection,
-                 action,
-                 inp,
-                 feedback_text,
-                 outcome,
-                 "",
-                 "Single-KC"]
+        datum = [
+            self.student_id, self.session_id, transaction_id, time,
+            self.timezone, student_response, tutor_response, self.level_domain,
+            self.problem_name, self.problem_start, step_name, selection,
+            action, inp, feedback_text, outcome, "", "Single-KC"
+        ]
 
         if kcs is not None:
             for kc in kcs:
@@ -173,8 +168,8 @@ class DataShopLogger():
         with open(self.filename, 'a+') as fout:
             fout.write("\t".join(str(v) for v in datum) + "\n")
 
-class MultiDiscreteToDiscreteWrapper(gym.ActionWrapper):
 
+class MultiDiscreteToDiscreteWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         assert isinstance(env.action_space, gym.spaces.MultiDiscrete), \
@@ -198,12 +193,12 @@ class MultiDiscreteToDiscreteWrapper(gym.ActionWrapper):
     def action(self, discrete_act):
         act = np.zeros_like(self.action_vec)
         for i in range(len(self.action_vec)):
-            act[i] = discrete_act // np.prod(self.action_vec[i+1:])
-            discrete_act = discrete_act % np.prod(self.action_vec[i+1:])
+            act[i] = discrete_act // np.prod(self.action_vec[i + 1:])
+            discrete_act = discrete_act % np.prod(self.action_vec[i + 1:])
         return act
 
-class OnlineDictVectorizer():
 
+class OnlineDictVectorizer():
     def __init__(self, n_features):
         self.n_features = n_features
         self.separator = '='
@@ -217,7 +212,7 @@ class OnlineDictVectorizer():
         """
         Given a set of X, it updates the key with any new values.
         """
-        
+
         for x in X:
             for f, v in x.items():
                 if isinstance(v, str):
@@ -299,18 +294,15 @@ class BaseOppEnv(gym.Env):
         self.dv = OnlineDictVectorizer(n_features=n_features)
 
         self.observation_space = spaces.Box(low=0.0,
-                high=1.0, shape=(1, n_features), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
-            n_args, n_args])
+                                            high=1.0,
+                                            shape=(1, n_features),
+                                            dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete(
+            [n_selections, n_operators, n_args, n_args])
 
     def get_rl_operators(self):
-        return [
-                ('copy', 1),
-                ('add', 2),
-                ('multiply', 2),
-                ('mod10', 1),
-                ('div10', 1)
-                ]
+        return [('copy', 1), ('add', 2), ('multiply', 2), ('mod10', 1),
+                ('div10', 1)]
 
     def get_rl_state(self):
         # self.state = {
@@ -358,7 +350,8 @@ class BaseOppEnv(gym.Env):
 
             # greater than 9
             try:
-                new_relations['greater_than_9(%s)' % str(attr)] = float(attr_val) > 9
+                new_relations['greater_than_9(%s)' %
+                              str(attr)] = float(attr_val) > 9
             except Exception:
                 new_relations['greater_than_9(%s)' % str(attr)] = False
 
@@ -377,7 +370,7 @@ class BaseOppEnv(gym.Env):
             s, a, i = self.decode(action)
 
             print(s, a, i)
-            
+
             if isinstance(s, tuple):
                 if s in self.internal_memory or i == '':
                     reward = -1
@@ -394,7 +387,7 @@ class BaseOppEnv(gym.Env):
         # print(s, a, i)
         # print()
         # print(reward)
-        
+
         state = self.get_rl_state()
         # pprint(state)
         obs = self.dv.fit_transform([state])[0]
@@ -402,27 +395,26 @@ class BaseOppEnv(gym.Env):
 
         return obs, reward, done, info
 
-
     def apply_rl_op(self, op, arg1, arg2):
         a1 = None
         a2 = None
 
         if arg1 in self.tutor.state:
-            a1 = self.tutor.state[arg1] 
+            a1 = self.tutor.state[arg1]
         elif arg1 in self.internal_memory:
             a1 = self.internal_memory[arg1]
         else:
             raise ValueError('Element not in memory')
 
         if arg2 in self.tutor.state:
-            a2 = self.tutor.state[arg2] 
+            a2 = self.tutor.state[arg2]
         elif arg2 in self.internal_memory:
             a2 = self.internal_memory[arg2]
         else:
             raise ValueError('Element not in memory')
 
         if op == "copy":
-            return a1 
+            return a1
         elif op == "add":
             return str(int(a1) + int(a2))
         elif op == "multiply":
@@ -453,7 +445,7 @@ class BaseOppEnv(gym.Env):
             a = "ButtonPressed"
         else:
             a = "UpdateField"
-        
+
         if s == "done":
             v = -1
         if s == "check_convert":

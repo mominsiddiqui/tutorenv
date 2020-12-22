@@ -29,7 +29,6 @@ class MultiColumnAdditionSymbolic:
         Creates a state and sets a random problem.
         """
         if logger is None:
-            print("CREATING LOGGER")
             # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
             self.logger = StubLogger()
         else:
