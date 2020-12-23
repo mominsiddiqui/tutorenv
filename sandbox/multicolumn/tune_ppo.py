@@ -155,7 +155,7 @@ class TrialCallback(BaseCallback):
         log_dir: str,
         n_eval_episodes: int = 10,
         eval_freq: int = 10000,
-        min_eval: float = -3000,
+        min_eval: float = -600,
         verbose: int = 0,
     ):
         super(TrialCallback, self).__init__(verbose)
@@ -234,12 +234,17 @@ if __name__ == "__main__":
     # multiprocess environment
     # env = make_vec_env('MulticolumnArithSymbolic-v0', n_envs=1)
 
-    study = optuna.create_study(pruner=optuna.pruners.MedianPruner(
-        n_warmup_steps=20000), direction="maximize")
-    study.optimize(objective, n_trials=1000, n_jobs=1)
+    pruner = optuna.pruners.MedianPruner(n_warmup_steps=20000)
 
-    print("BEST")
-    print(study.best_params)
-
-    # while True:
-    # Train
+    study = optuna.create_study(pruner=pruner,
+                                direction="maximize",
+                                storage='sqlite:///study.db',
+                                load_if_exists=True
+                                )
+    try:
+        study.optimize(objective, n_trials=1000, n_jobs=1)
+    except Exception as e:
+        print(e)
+    finally:
+        print("BEST")
+        print(study.best_params)
