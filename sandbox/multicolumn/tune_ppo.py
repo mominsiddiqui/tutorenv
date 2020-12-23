@@ -1,7 +1,5 @@
 from typing import Dict
 from typing import Any
-from typing import Union
-from typing import Callable
 import tempfile
 
 import gym
@@ -16,29 +14,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.monitor import load_results
 
-import tutorenvs
-
-
-def linear_schedule(
-        initial_value: Union[float, str]) -> Callable[[float], float]:
-    """
-    Linear learning rate schedule.
-
-    :param initial_value: (float or str)
-    :return: (function)
-    """
-    if isinstance(initial_value, str):
-        initial_value = float(initial_value)
-
-    def func(progress_remaining: float) -> float:
-        """
-        Progress will decrease from 1 (beginning) to 0
-        :param progress_remaining: (float)
-        :return: (float)
-        """
-        return progress_remaining * initial_value
-
-    return func
+import tutorenvs  # noqa: F401
+from tutorenvs.utils import linear_schedule
 
 
 def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
@@ -48,10 +25,21 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     :param trial:
     :return:
     """
-    batch_size = trial.suggest_categorical("batch_size",
-                                           [8, 16, 32, 64, 128, 256, 512])
-    n_steps = trial.suggest_categorical(
-        "n_steps", [8, 16, 32, 64, 128, 256, 512, 1024, 2048])
+    n_step_pow = trial.suggest_discrete_uniform('n_step_pow', 3, 11, 1)
+    n_steps = int(2**n_step_pow)
+
+    # possible_n_steps = [8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    # n_steps = trial.suggest_categorical("n_steps",
+    #                                     possible_n_steps)
+
+    batches_pow = trial.suggest_discrete_uniform('batches_pow', 3,
+                                                 n_step_pow, 1)
+    batch_size = int(2**batches_pow)
+
+    # possible_batches = [8, 16, 32, 64, 128, 256, 512]
+    # batch_size = trial.suggest_categorical("batch_size",
+    #                                        possible_batches)
+
     gamma = trial.suggest_categorical("gamma", [0.0])
     # 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     learning_rate = trial.suggest_loguniform("lr", 1e-8, 1)
@@ -71,16 +59,7 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     net_arch = trial.suggest_categorical("net_arch",
                                          ["tiny", "small", "medium"])
     shared_arch = trial.suggest_categorical("shared_arch", [True, False])
-    # Uncomment for gSDE (continuous actions)
-    # log_std_init = trial.suggest_uniform("log_std_init", -4, 1)
-    # Uncomment for gSDE (continuous action)
-    # sde_sample_freq = trial.suggest_categorical("sde_sample_freq", [-1, 8,
-    # 16, 32, 64, 128, 256])
-    # Orthogonal initialization
     ortho_init = False
-    # ortho_init = trial.suggest_categorical('ortho_init', [False, True])
-    # activation_fn = trial.suggest_categorical('activation_fn', ['tanh',
-    # 'relu', 'elu', 'leaky_relu'])
     activation_fn = trial.suggest_categorical("activation_fn",
                                               ["tanh", "relu"])
 
@@ -189,9 +168,9 @@ class TrialCallback(BaseCallback):
 
 
 def objective(trial: optuna.Trial) -> float:
-    n_eval_episodes = 10
+    n_eval_episodes = 15
     eval_freq = 5000
-    n_steps = 250000
+    n_steps = 10000
 
     with tempfile.TemporaryDirectory() as log_dir:
         env = DummyVecEnv([
@@ -200,7 +179,7 @@ def objective(trial: optuna.Trial) -> float:
         ppo_args = sample_ppo_params(trial)
 
         model = PPO(MlpPolicy, env,
-                    tensorboard_log="./tensorboard_ppo_multi/",
+                    # tensorboard_log="./tensorboard_ppo_multi/",
                     **ppo_args)
         # gamma=0.1,
         # tensorboard_log="./tensorboard/v0/")
