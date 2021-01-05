@@ -19,7 +19,7 @@ def get_args(params: Dict[str, Any]) -> Dict[str, Any]:
     :return:
     """
     batch_size = int(2**params['batches_pow'])
-    n_steps = int(params['n_step_pow'])
+    n_steps = int(2**params['n_step_pow'])
     gamma = params['gamma']
     learning_rate = params['lr']
     lr_schedule = params['lr_schedule']
@@ -153,11 +153,19 @@ if __name__ == "__main__":
     #     'activation_fn': 'tanh'
     # }
 
-    params = {'activation_fn': 'relu', 'batch_size': 32, 'clip_range': 0.1,
-              'ent_coef': 0.008425259906148678, 'gae_lambda': 0.98, 'gamma':
-              0.0, 'lr': 0.0014548935455020253, 'lr_schedule': 'linear',
-              'max_grad_norm': 0.6, 'n_epochs': 5, 'n_steps': 64, 'net_arch':
-              'medium', 'shared_arch': True, 'vf_coef': 0.6725952403531438}
+    # params = {'activation_fn': 'relu', 'batch_size': 32, 'clip_range': 0.1,
+    #           'ent_coef': 0.008425259906148678, 'gae_lambda': 0.98, 'gamma':
+    #           0.0, 'lr': 0.0014548935455020253, 'lr_schedule': 'linear',
+    #           'max_grad_norm': 0.6, 'n_epochs': 5, 'n_steps': 64, 'net_arch':
+    #           'medium', 'shared_arch': True, 'vf_coef': 0.6725952403531438}
+
+    params = {'n_step_pow': 5.0, 'batches_pow': 5.0, 'gamma': 0.0, 'lr':
+              0.0014291278312354846, 'lr_schedule': 'linear', 'ent_coef':
+              0.042102094710275415, 'clip_range': 0.2, 'n_epochs': 5,
+              'gae_lambda': 0.92, 'max_grad_norm': 0.7, 'vf_coef':
+              0.40158288555773314, 'net_arch': 'medium', 'shared_arch': False,
+              'activation_fn': 'relu'}
+
     kwargs = get_args(params)
 
     # multiprocess environment
@@ -174,7 +182,7 @@ if __name__ == "__main__":
 
     # while True:
     # Train
-    model.learn(total_timesteps=5000000)
+    model.learn(total_timesteps=1000000)
 
     # Test
     # obs = env.reset()

@@ -170,7 +170,7 @@ class TrialCallback(BaseCallback):
 def objective(trial: optuna.Trial) -> float:
     n_eval_episodes = 15
     eval_freq = 5000
-    n_steps = 10000
+    n_steps = 350000
 
     with tempfile.TemporaryDirectory() as log_dir:
         env = DummyVecEnv([

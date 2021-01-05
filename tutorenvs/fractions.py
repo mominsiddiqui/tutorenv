@@ -9,9 +9,11 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.feature_extraction import DictVectorizer
+from tutorenvs.utils import OnlineDictVectorizer
 import numpy as np
 
 from tutorenvs.utils import DataShopLogger
+from tutorenvs.utils import StubLogger
 
 
 class FractionArithSymbolic:
@@ -20,11 +22,8 @@ class FractionArithSymbolic:
         """
         Creates a state and sets a random problem.
         """
-        self.num_correct_steps = 0
-        self.num_incorrect_steps = 0
-        self.num_hints = 0
-
-        self.logger = DataShopLogger('FractionsTutor', extra_kcs=['ptype_field'])
+        # self.logger = DataShopLogger('FractionsTutor', extra_kcs=['ptype_field'])
+        self.logger = StubLogger()
         self.logger.set_student()
         self.set_random_problem()
         # self.reset("", "", "", "", "")
@@ -35,6 +34,10 @@ class FractionArithSymbolic:
         provided arguments.
         """
         self.steps = 0
+        self.num_correct_steps = 0
+        self.num_incorrect_steps = 0
+        self.num_hints = 0
+
         self.state = {
             'initial_num_left': num1,
             'initial_denom_left': denom1,
@@ -146,10 +149,10 @@ class FractionArithSymbolic:
         return state_output
 
     def set_random_problem(self):
-        num1 = str(randint(1, 15))
-        num2 = str(randint(1, 15))
-        denom1 = str(randint(2, 15))
-        denom2 = str(randint(2, 15))
+        num1 = str(randint(1, 7))
+        num2 = str(randint(1, 7))
+        denom1 = str(randint(2, 7))
+        denom2 = str(randint(2, 7))
         operator = choice(['+', '*'])
 
         self.reset(num1, denom1, operator, num2, denom2)
@@ -164,11 +167,12 @@ class FractionArithSymbolic:
 
     def apply_sai(self, selection, action, inputs):
         """
-        Give a SAI, it applies it. This method returns feedback (i.e., -1 or 1).
+        Give a SAI, it applies it. This method returns feedback
+        (i.e., -1 or 1).
         """
         self.steps += 1
         reward = self.evaluate_sai(selection, action, inputs)
-        
+
         if reward > 0:
             outcome = "CORRECT"
             self.num_correct_steps += 1
@@ -177,11 +181,11 @@ class FractionArithSymbolic:
             self.num_incorrect_steps += 1
 
         self.logger.log_step(selection, action, inputs['value'], outcome,
-                             step_name=self.ptype + '_' + demo[0],
+                             step_name=self.ptype + '_' + selection,
                              kcs=[self.ptype + '_' + selection])
 
         # Render output?
-        self.render()
+        # self.render()
 
         if reward == -1.0:
             return reward
@@ -370,6 +374,79 @@ class FractionArithSymbolic:
             return ('done', "ButtonPressed", {'value': -1})
 
         raise Exception("request demo - logic missing")
+
+
+class FractionArithNumberEnv(gym.Env):
+    metadata = {'render.modes': ['human']}
+
+    def __init__(self):
+        self.tutor = FractionArithSymbolic()
+        n_selections = len(self.tutor.get_possible_selections())
+        n_features = 2000
+        self.dv = OnlineDictVectorizer(n_features)
+        self.observation_space = spaces.Box(
+            low=0.0, high=1.0, shape=(1, n_features), dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([n_selections, 98])
+        self.n_steps = 0
+        self.max_steps = 100000
+
+    def get_rl_state(self):
+        return self.tutor.state
+
+    def step(self, action):
+        self.n_steps += 1
+
+        s, a, i = self.decode(action)
+        # print(s, a, i)
+        # print()
+        reward = self.tutor.apply_sai(s, a, i)
+        # self.render()
+        # print(reward)
+        state = self.tutor.state
+        # pprint(state)
+        obs = self.dv.fit_transform([state])[0]
+        done = (s == 'done' and reward == 1.0)
+
+        # have a max steps for a given problem.
+        # When we hit that we're done regardless.
+        if self.n_steps > self.max_steps:
+            done = True
+
+        info = {}
+
+        return obs, reward, done, info
+
+    def decode(self, action):
+        # print(action)
+        s = self.tutor.get_possible_selections()[action[0]]
+
+        if s == "done":
+            a = "ButtonPressed"
+        else:
+            a = "UpdateField"
+
+        if s == "done":
+            v = -1
+        if s == "check_convert":
+            v = "x"
+        else:
+            v = action[1] + 1
+
+        i = {'value': str(v)}
+
+        return s, a, i
+
+    def reset(self):
+        self.n_steps = 0
+        self.tutor.set_random_problem()
+        # self.render()
+        state = self.get_rl_state()
+        obs = self.dv.fit_transform([state])[0]
+        return obs
+
+    def render(self, mode='human', close=False):
+        self.tutor.render()
+
 
 class FractionArithDigitsEnv(gym.Env):
     metadata = {'render.modes': ['human']}
