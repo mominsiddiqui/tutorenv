@@ -1,6 +1,7 @@
 from random import randint
 from random import choice
 from pprint import pprint
+import logging
 
 import cv2  # pytype:disable=import-error
 from PIL import Image, ImageDraw
@@ -15,6 +16,8 @@ import numpy as np
 from tutorenvs.utils import DataShopLogger
 from tutorenvs.utils import StubLogger
 
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
 
 class FractionArithSymbolic:
 
@@ -110,9 +113,9 @@ class FractionArithSymbolic:
 
         # append correct/incorrect counts
         if add_counts:
-            d.text((100, 0), str(self.num_hints), fill="yellow")
-            d.text((100, 10), str(self.num_incorrect_steps), fill="red")
-            d.text((100, 20), str(self.num_correct_steps), fill="green")
+            d.text((95, 0), "h:{}".format(self.num_hints), fill=(0,0,0))
+            d.text((95, 10), "-:{}".format(self.num_incorrect_steps), fill=(0,0,0))
+            d.text((95, 20), "+:{}".format(self.num_correct_steps), fill=(0,0,0))
 
         # for eyes :)
         # if add_dot:
@@ -149,10 +152,10 @@ class FractionArithSymbolic:
         return state_output
 
     def set_random_problem(self):
-        num1 = str(randint(1, 7))
-        num2 = str(randint(1, 7))
-        denom1 = str(randint(2, 7))
-        denom2 = str(randint(2, 7))
+        num1 = str(randint(1, 5))
+        num2 = str(randint(1, 5))
+        denom1 = str(randint(2, 5))
+        denom2 = str(randint(2, 5))
         operator = choice(['+', '*'])
 
         self.reset(num1, denom1, operator, num2, denom2)
@@ -386,7 +389,7 @@ class FractionArithNumberEnv(gym.Env):
         self.dv = OnlineDictVectorizer(n_features)
         self.observation_space = spaces.Box(
             low=0.0, high=1.0, shape=(1, n_features), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([n_selections, 98])
+        self.action_space = spaces.MultiDiscrete([n_selections, 50])
         self.n_steps = 0
         self.max_steps = 100000
 

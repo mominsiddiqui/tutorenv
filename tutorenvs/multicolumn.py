@@ -197,9 +197,9 @@ class MultiColumnAdditionSymbolic:
 
         # append correct/incorrect counts
         if add_counts:
-            d.text((0, 0), str(self.num_incorrect_steps), fill="red")
-            d.text((0, 10), str(self.num_correct_steps), fill="green")
-            d.text((0, 20), str(self.num_hints), fill="blue")
+            d.text((0, 0), "h:{}".format(self.num_hints), fill=(0,0,0))
+            d.text((0, 10), "-:{}".format(self.num_incorrect_steps), fill=(0,0,0))
+            d.text((0, 20), "+:{}".format(self.num_correct_steps), fill=(0,0,0))
 
         if add_dot:
             d.ellipse((add_dot[0]-3, add_dot[1]-3, add_dot[0]+3, add_dot[1]+3),

@@ -1,8 +1,7 @@
-from apprentice.agents.ModularAgent import ModularAgent
+from apprentice.agents.WhereWhenHowNoFoa import WhereWhenHowNoFoa
 from apprentice.working_memory.representation import Sai
 
 from tutorenvs.fractions import FractionArithSymbolic
-
 
 
 def run_training(agent, n=10):
@@ -19,36 +18,30 @@ def run_training(agent, n=10):
         if response == {}:
             print('hint')
             selection, action, inputs = env.request_demo()
-            sai = Sai(selection=selection,
-                           action=action,
-                           inputs=inputs)
+            sai = Sai(selection=selection, action=action, inputs=inputs)
 
         else:
             sai = Sai(selection=response['selection'],
-                    action=response['action'],
-                    inputs=response['inputs'])
+                      action=response['action'],
+                      inputs=response['inputs'])
 
         reward = env.apply_sai(sai.selection, sai.action, sai.inputs)
         print('reward', reward)
 
-        agent.train(state, sai, reward)
+        next_state = env.get_state()
+
+        agent.train(state, sai, reward, next_state=next_state,
+                    skill_label="fractions",
+                    foci_of_attention=[])
 
         if sai.selection == "done" and reward == 1.0:
+            print('Finished problem {} of {}'.format(p, n))
             p += 1
 
+
 if __name__ == "__main__":
-    args = {"function_set" : ["RipFloatValue","Add",
-        'Multiply',
-        "Subtract",
-        # "Numerator_Multiply", "Cross_Multiply",
-        "Divide"],
 
-        "feature_set" : ["Equals"], "planner" : "numba", "search_depth" : 2,
-        "when_learner": "trestle", "where_learner": "FastMostSpecific",
-        "state_variablization" : "whereappend", "strip_attrs" :
-        ["to_left","to_right","above","below","type","id","offsetParent","dom_class"],
-        "when_args" : { "cross_rhs_inference" : "none" } }
+    agent = WhereWhenHowNoFoa('fraction arith', 'fraction arith',
+                              search_depth=1)
 
-    agent = ModularAgent(**args)
-
-    run_training(agent, n = 100)
+    run_training(agent, n=500)
