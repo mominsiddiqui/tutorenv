@@ -1,6 +1,7 @@
 from random import randint
 from random import choice
 from pprint import pprint
+import logging
 
 import cv2  # pytype:disable=import-error
 import gym
@@ -14,6 +15,10 @@ from PIL import Image, ImageDraw
 from tutorenvs.utils import OnlineDictVectorizer
 from tutorenvs.utils import DataShopLogger
 from tutorenvs.utils import StubLogger
+
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
+
 
 def custom_add(a, b):
     if a == '':
@@ -29,8 +34,8 @@ class MultiColumnAdditionSymbolic:
         Creates a state and sets a random problem.
         """
         if logger is None:
-            self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
-            # self.logger = StubLogger()
+            # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+            self.logger = StubLogger()
         else:
             self.logger = logger
         self.logger.set_student()

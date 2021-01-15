@@ -21,12 +21,15 @@ pil_logger.setLevel(logging.INFO)
 
 class FractionArithSymbolic:
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """
         Creates a state and sets a random problem.
         """
-        # self.logger = DataShopLogger('FractionsTutor', extra_kcs=['ptype_field'])
-        self.logger = StubLogger()
+        if logger is None:
+            # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+            self.logger = StubLogger()
+        else:
+            self.logger = logger
         self.logger.set_student()
         self.set_random_problem()
         # self.reset("", "", "", "", "")

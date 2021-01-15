@@ -134,7 +134,7 @@ class TrialCallback(BaseCallback):
         log_dir: str,
         n_eval_episodes: int = 10,
         eval_freq: int = 10000,
-        min_eval: float = -600,
+        min_eval: float = -1500,
         verbose: int = 0,
     ):
         super(TrialCallback, self).__init__(verbose)
