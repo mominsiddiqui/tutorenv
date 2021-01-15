@@ -98,9 +98,9 @@ class MultiColumnAdditionSymbolic:
         self.num_hints = 0
 
         self.state = {
+            'thousands_carry': '',
             'hundreds_carry': '',
             'tens_carry': '',
-            'ones_carry': '',
             'upper_hundreds': upper_hundreds,
             'upper_tens': upper_tens,
             'upper_ones': upper_ones,
@@ -115,9 +115,9 @@ class MultiColumnAdditionSymbolic:
         }
 
     def get_possible_selections(self):
-        return ['hundreds_carry',
+        return ['thousands_carry',
+                'hundreds_carry',
                 'tens_carry',
-                'ones_carry',
                 'answer_thousands',
                 'answer_hundreds',
                 'answer_tens',
@@ -126,9 +126,9 @@ class MultiColumnAdditionSymbolic:
 
     def get_possible_args(self):
         return [
+            'thousands_carry',
             'hundreds_carry',
             'tens_carry',
-            'ones_carry',
             'upper_hundreds',
             'upper_tens',
             'upper_ones',
@@ -151,9 +151,9 @@ class MultiColumnAdditionSymbolic:
                 self.state[attr] for attr in self.state}
 
         output = " %s%s%s \n  %s%s%s\n+ %s%s%s\n-----\n %s%s%s%s\n" % (
+                state["thousands_carry"],
                 state["hundreds_carry"],
                 state["tens_carry"],
-                state["ones_carry"],
                 state["upper_hundreds"],
                 state["upper_tens"],
                 state["upper_ones"],
@@ -186,13 +186,13 @@ class MultiColumnAdditionSymbolic:
             d.rectangle(((16, 71), (20, 79)), fill=None, outline='black')
 
         # ones carry
-        if state['ones_carry'] == " ":
+        if state['tens_carry'] == " ":
             d.rectangle(((28, 11), (32, 19)), fill=None, outline='black')
         # tens carry
-        if state['tens_carry'] == " ":
+        if state['hundreds_carry'] == " ":
             d.rectangle(((22, 11), (26, 19)), fill=None, outline='black')
         # hundreds carry
-        if state['hundreds_carry'] == " ":
+        if state['thousands_carry'] == " ":
             d.rectangle(((16, 11), (20, 19)), fill=None, outline='black')
 
         # append correct/incorrect counts
@@ -213,6 +213,12 @@ class MultiColumnAdditionSymbolic:
         """
         state_output = {attr:
                         {'id': attr, 'value': self.state[attr],
+                         'column': 'thousands' if 'thousands' in attr else
+                         'hundreds' if 'hundreds' in attr else 'tens' if 'tens'
+                         in attr else 'ones',
+                         'row': 'answer' if 'answer' in attr else
+                         'lower' if 'lower' in attr else 'upper' if 'upper'
+                         in attr else 'carry',
                          'type': 'TextField',
                          'contentEditable': self.state[attr] == "",
                          'dom_class': 'CTATTable--cell',
@@ -302,7 +308,7 @@ class MultiColumnAdditionSymbolic:
                 inputs['value'] == self.correct_ones):
             return 1.0
 
-        if (selection == "ones_carry" and
+        if (selection == "tens_carry" and
                 len(custom_add(self.state['upper_ones'],
                     self.state['lower_ones'])) == 2 and
                 inputs['value'] == custom_add(self.state['upper_ones'],
@@ -310,21 +316,21 @@ class MultiColumnAdditionSymbolic:
                 return 1.0
 
         if (selection == "answer_tens" and self.state['answer_ones'] != "" and
-                (self.state['ones_carry'] != "" or 
+                (self.state['tens_carry'] != "" or 
                     len(custom_add(self.state['upper_ones'],
                         self.state['lower_ones'])) == 1) and
                 inputs['value'] == self.correct_tens):
                 return 1.0
 
-        if (selection == "tens_carry" and
+        if (selection == "hundreds_carry" and
                 self.state['answer_ones'] != "" and
-                (self.state['ones_carry'] != "" or 
+                (self.state['tens_carry'] != "" or 
                     len(custom_add(self.state['upper_ones'],
                         self.state['lower_ones'])) == 1)):
 
-            if (self.state['ones_carry'] != ""):
+            if (self.state['tens_carry'] != ""):
                 tens_sum = custom_add(custom_add(self.state['upper_tens'],
-                        self.state['lower_tens']), self.state['ones_carry'])
+                        self.state['lower_tens']), self.state['tens_carry'])
             else:
                 tens_sum = custom_add(self.state['upper_tens'],
                         self.state['lower_tens'])
@@ -335,23 +341,23 @@ class MultiColumnAdditionSymbolic:
 
         if (selection == "answer_hundreds" and
             self.state['answer_tens'] != "" and
-            (self.state['tens_carry'] != "" or 
+            (self.state['hundreds_carry'] != "" or 
                len(custom_add(self.state['upper_tens'],
                    self.state['lower_tens'])) == 1) and
                inputs['value'] == self.correct_hundreds):
             return 1.0
 
-        if (selection == "hundreds_carry" and
+        if (selection == "thousands_carry" and
                 self.state['answer_tens'] != "" and
-                (self.state['tens_carry'] != "" or 
+                (self.state['hundreds_carry'] != "" or 
                     len(custom_add(self.state['upper_tens'],
                         self.state['lower_tens'])) == 1)):
 
-            if (self.state['tens_carry'] != ""):
+            if (self.state['hundreds_carry'] != ""):
                 hundreds_sum = custom_add(custom_add(
                     self.state['upper_hundreds'],
                     self.state['lower_hundreds']),
-                    self.state['tens_carry'])
+                    self.state['hundreds_carry'])
             else:
                 hundreds_sum = custom_add(
                         self.state['upper_hundreds'],
@@ -363,7 +369,7 @@ class MultiColumnAdditionSymbolic:
 
         if (selection == "answer_thousands" and
             self.state['answer_hundreds'] != "" and
-            self.state['hundreds_carry'] != "" and
+            self.state['thousands_carry'] != "" and
             inputs['value'] == self.correct_thousands):
                 return 1.0
 
@@ -393,37 +399,37 @@ class MultiColumnAdditionSymbolic:
         if self.state['answer_ones'] == '':
             return ('answer_ones', 'UpdateField', {'value': str(self.correct_ones)})
 
-        if (self.state["ones_carry"] == '' and
+        if (self.state["tens_carry"] == '' and
                 len(custom_add(self.state['upper_ones'],
                     self.state['lower_ones'])) == 2):
-            return ('ones_carry', 'UpdateField',
+            return ('tens_carry', 'UpdateField',
                     {'value': custom_add(self.state['upper_ones'],
                                          self.state['lower_ones'])[0]})
 
         if self.state['answer_tens'] == '':
             return ('answer_tens', 'UpdateField', {'value': str(self.correct_tens)})
 
-        if self.state["tens_carry"] == '':
+        if self.state["hundreds_carry"] == '':
             if (len(custom_add(custom_add(self.state['upper_tens'],
-                self.state['lower_tens']), self.state['ones_carry'])) == 2):
-                return ('tens_carry', 'UpdateField',
+                self.state['lower_tens']), self.state['tens_carry'])) == 2):
+                return ('hundreds_carry', 'UpdateField',
                         {'value':
                          custom_add(custom_add(self.state['upper_tens'],
                                                self.state['lower_tens']),
-                                    self.state['ones_carry'])[0]})
+                                    self.state['tens_carry'])[0]})
 
         if self.state['answer_hundreds'] == '':
             return ('answer_hundreds', 'UpdateField', {'value': str(self.correct_hundreds)})
 
-        if self.state["hundreds_carry"] == '':
+        if self.state["thousands_carry"] == '':
             if (len(custom_add(custom_add(self.state['upper_hundreds'],
                                           self.state['lower_hundreds']),
-                               self.state['tens_carry'])) == 2):
-                return ('hundreds_carry', 'UpdateField',
+                               self.state['hundreds_carry'])) == 2):
+                return ('thousands_carry', 'UpdateField',
                         {'value':
                          custom_add(custom_add(self.state['upper_hundreds'],
                                                self.state['lower_hundreds']),
-                                    self.state['tens_carry'])[0]})
+                                    self.state['hundreds_carry'])[0]})
 
         if self.state['answer_thousands'] == '':
             return ('answer_thousands', 'UpdateField', {'value': str(self.correct_thousands)})
@@ -569,8 +575,8 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
-        self.targets = ['answer_ones', 'ones_carry', 'answer_tens',
-                'tens_carry', 'answer_hundreds', 'hundreds_carry',
+        self.targets = ['answer_ones', 'tens_carry', 'answer_tens',
+                'hundreds_carry', 'answer_hundreds', 'thousands_carry',
                 'answer_thousands']
         self.target_xy = [
                 (36, 75),
@@ -654,11 +660,11 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
 
             # carry fields
             elif self.x >= 28 and self.y >= 11 and self.x <= 32 and self.y <=19:
-                s = "ones_carry"
-            elif self.x >= 22 and self.y >= 11 and self.x <= 26 and self.y <=19:
                 s = "tens_carry"
-            elif self.x >= 16 and self.y >= 11 and self.x <= 20 and self.y <=19:
+            elif self.x >= 22 and self.y >= 11 and self.x <= 26 and self.y <=19:
                 s = "hundreds_carry"
+            elif self.x >= 16 and self.y >= 11 and self.x <= 20 and self.y <=19:
+                s = "thousands_carry"
 
             a = 'UpdateField'
             i = {'value': str(action - 2)}
