@@ -513,6 +513,191 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
     def render(self, mode='human', close=False):
         self.tutor.render()
 
+
+def int2_float_add_then_ones(x, y):
+    z = float(x) + float(y)
+    z = z % 10
+    if z.is_integer():
+        z = int(z)
+    return str(z)
+
+
+def int2_float_add_then_tens(x, y):
+    z = float(x) + float(y)
+    z = z // 10
+    if z.is_integer():
+        z = int(z)
+    return str(z)
+
+
+def int3_float_add_then_ones(x, y, w):
+    z = float(x) + float(y) + float(w)
+    z = z % 10
+    if z.is_integer():
+        z = int(z)
+    return str(z)
+
+
+def int3_float_add_then_tens(x, y, w):
+    z = float(x) + float(y) + float(w)
+    z = z // 10
+    if z.is_integer():
+        z = int(z)
+    return str(z)
+
+
+def add_tens(x, y, w):
+    if w is None:
+        return int2_float_add_then_tens(x, y)
+    return int3_float_add_then_tens(x, y, w)
+
+
+def add_ones(x, y, w):
+    if w is None:
+        return int2_float_add_then_ones(x, y)
+    return int3_float_add_then_ones(x, y, w)
+
+
+class MultiColumnAdditionOppEnv(gym.Env):
+    metadata = {'render.modes': ['human']}
+
+    def __init__(self):
+        self.tutor = MultiColumnAdditionSymbolic()
+        n_selections = len(self.tutor.get_possible_selections())
+        n_features = 2000
+        n_operators = len(self.get_rl_operators())
+        n_args = len(self.tutor.get_possible_args())
+        self.dv = OnlineDictVectorizer(n_features)
+        self.observation_space = spaces.Box(
+            low=0.0, high=1.0, shape=(1, n_features), dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
+                                                  n_args, n_args, n_args])
+        self.n_steps = 0
+        self.max_steps = 100000
+
+    def get_rl_operators(self):
+        return ['copy',
+                'add2-tens',
+                'add2-ones',
+                'add3-tens',
+                'add3-ones',
+                ]
+
+    def get_rl_state(self):
+        state = self.tutor.state.copy()
+        for attr in self.tutor.state:
+            if attr == "operator":
+                continue
+            for attr2 in self.tutor.state:
+                if attr2 == "operator":
+                    continue
+                if attr >= attr2:
+                    continue
+
+                try:
+                    ones2 = int2_float_add_then_ones(state[attr], state[attr2])
+                    state['add2-ones(%s,%s)' % (attr, attr2)] = ones2
+                except Exception:
+                    pass
+                try:
+                    tens2 = int2_float_add_then_tens(state[attr], state[attr2])
+                    state['add2-tens(%s,%s)' % (attr, attr2)] = tens2
+                except Exception:
+                    pass
+
+                for attr3 in self.tutor.state:
+                    if attr3 == "operator":
+                        continue
+                    if attr2 >= attr3:
+                        continue
+
+                try:
+                    ones3 = int3_float_add_then_ones(state[attr], state[attr2],
+                                                     state[attr3])
+                    state['add2-ones(%s,%s,%s)' % (attr, attr2, attr3)] = ones3
+                except Exception:
+                    pass
+                try:
+                    tens3 = int3_float_add_then_tens(state[attr], state[attr2],
+                                                     state[attr3])
+                    state['add2-tens(%s,%s,%s)' % (attr, attr2, attr3)] = tens3
+                except Exception:
+                    pass
+
+        return state
+
+    def step(self, action):
+        try:
+            s, a, i = self.decode(action)
+            reward = self.tutor.apply_sai(s, a, i)
+            done = (s == 'done' and reward == 1.0)
+        except ValueError:
+            reward = -1
+            done = False
+
+        # print(s, a, i)
+        # print()
+        # print(reward)
+
+        state = self.get_rl_state()
+        # pprint(state)
+        obs = self.dv.fit_transform([state])[0]
+        info = {}
+
+        return obs, reward, done, info
+
+    def apply_rl_op(self, op, arg1, arg2, arg3):
+        if op == "copy":
+            return self.tutor.state[arg1]
+        elif op == "add2-tens":
+            return int2_float_add_then_tens(self.tutor.state[arg1],
+                                            self.tutor.state[arg2])
+        elif op == "add2-ones":
+            return int2_float_add_then_ones(self.tutor.state[arg1],
+                                            self.tutor.state[arg2])
+        elif op == "add3-tens":
+            return int3_float_add_then_tens(self.tutor.state[arg1],
+                                            self.tutor.state[arg2],
+                                            self.tutor.state[arg3])
+        elif op == "add3-ones":
+            return int3_float_add_then_ones(self.tutor.state[arg1],
+                                            self.tutor.state[arg2],
+                                            self.tutor.state[arg3])
+
+    def decode(self, action):
+        # print(action)
+        s = self.tutor.get_possible_selections()[action[0]]
+        op = self.get_rl_operators()[action[1]]
+        arg1 = self.tutor.get_possible_args()[action[2]]
+        arg2 = self.tutor.get_possible_args()[action[3]]
+        arg3 = self.tutor.get_possible_args()[action[3]]
+
+        if s == "done":
+            a = "ButtonPressed"
+        else:
+            a = "UpdateField"
+
+        if s == "done":
+            v = -1
+        if s == "check_convert":
+            v = "x"
+        else:
+            v = self.apply_rl_op(op, arg1, arg2, arg3)
+
+        i = {'value': str(v)}
+
+        return s, a, i
+
+    def reset(self):
+        self.tutor.set_random_problem()
+        state = self.get_rl_state()
+        obs = self.dv.fit_transform([state])[0]
+        return obs
+
+    def render(self, mode='human', close=False):
+        self.tutor.render()
+
+
 class MultiColumnAdditionPixelEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 

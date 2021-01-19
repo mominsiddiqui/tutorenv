@@ -5,6 +5,7 @@ from tutorenvs.fractions import FractionArithOppEnv  # noqa: F401
 from tutorenvs.multicolumn import MultiColumnAdditionDigitsEnv  # noqa: F401
 from tutorenvs.multicolumn import MultiColumnAdditionPixelEnv  # noqa: F401
 from tutorenvs.multicolumn import MultiColumnAdditionPerceptEnv  # noqa: F401
+from tutorenvs.multicolumn import MultiColumnAdditionOppEnv  # noqa: F401
 
 register(
     id='FractionArith-v0',
@@ -30,6 +31,11 @@ register(
 register(
     id='MulticolumnArithSymbolic-v0',
     entry_point='tutorenvs:MultiColumnAdditionDigitsEnv',
+)
+
+register(
+    id='MulticolumnArithSymbolic-v1',
+    entry_point='tutorenvs:MultiColumnAdditionOppEnv',
 )
 
 register(
