@@ -13,12 +13,12 @@ register(
 
 register(
     id='FractionArith-v1',
-    entry_point='tutorenvs:FractionArithDigitsEnv',
+    entry_point='tutorenvs:FractionArithOppEnv',
 )
 
 register(
     id='FractionArith-v2',
-    entry_point='tutorenvs:FractionArithOppEnv',
+    entry_point='tutorenvs:FractionArithDigitsEnv',
 )
 
 # TODO no pixel fractions yet.

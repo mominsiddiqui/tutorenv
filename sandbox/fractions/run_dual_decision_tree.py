@@ -3,6 +3,8 @@ from tutorenvs.fractions import FractionArithSymbolic
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.feature_extraction import DictVectorizer
 
+from tutorenvs.utils import DataShopLogger
+
 
 def train_tree(n=10, logger=None):
     X = []
@@ -19,7 +21,7 @@ def train_tree(n=10, logger=None):
     rev_input_mapping = {}
     input_tree = DecisionTreeClassifier()
 
-    env = FractionArithSymbolic()
+    env = FractionArithSymbolic(logger)
 
     p = 0
     hints = 0
@@ -89,5 +91,6 @@ def train_tree(n=10, logger=None):
 
 if __name__ == "__main__":
 
+    logger = DataShopLogger('FractionsTutor', extra_kcs=['field'])
     for _ in range(1):
-        tree = train_tree(500)
+        tree = train_tree(800, logger)

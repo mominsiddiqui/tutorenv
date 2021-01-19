@@ -73,7 +73,7 @@ class FractionArithSymbolic:
     def get_possible_args(self):
         return ['initial_num_left',
                 'initial_denom_left',
-                'initial_operator',
+                # 'initial_operator',
                 'initial_num_right',
                 'initial_denom_right',
                 'convert_num_left',
@@ -396,9 +396,6 @@ class FractionArithNumberEnv(gym.Env):
         self.n_steps = 0
         self.max_steps = 100000
 
-    def get_rl_state(self):
-        return self.tutor.state
-
     def step(self, action):
         self.n_steps += 1
 
@@ -446,7 +443,7 @@ class FractionArithNumberEnv(gym.Env):
         self.n_steps = 0
         self.tutor.set_random_problem()
         # self.render()
-        state = self.get_rl_state()
+        state = self.tutor.state
         obs = self.dv.fit_transform([state])[0]
         return obs
 
@@ -560,58 +557,39 @@ class FractionArithDigitsEnv(gym.Env):
 class FractionArithOppEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
+    def __init__(self):
+        self.tutor = FractionArithSymbolic()
+        n_selections = len(self.tutor.get_possible_selections())
+        n_features = 2000
+        n_operators = len(self.get_rl_operators())
+        n_args = len(self.tutor.get_possible_args())
+        self.dv = OnlineDictVectorizer(n_features)
+        self.observation_space = spaces.Box(
+            low=0.0, high=1.0, shape=(1, n_features), dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
+            n_args, n_args])
+        self.n_steps = 0
+        self.max_steps = 100000
+
+
     def get_rl_operators(self):
         return ['copy',
                 'add',
                 'multiply']
 
     def get_rl_state(self):
-        # self.state = {
-        #     'initial_num_left': num1,
-        #     'initial_denom_left': denom1,
-        #     'initial_operator': operator,
-        #     'initial_num_right': num2,
-        #     'initial_denom_right': denom2,
-        #     'check_convert': '',
-        #     'convert_num_left': '',
-        #     'convert_denom_left': '',
-        #     'convert_operator': operator,
-        #     'convert_num_right': '',
-        #     'convert_denom_right': '',
-        #     'answer_num': '',
-        #     'answer_denom': '',
-        # }
-
-        state = {}
+        state = self.tutor.state.copy()
         for attr in self.tutor.state:
-            if attr == "initial_operator" or attr == "convert_operator":
-                state[attr] = self.tutor.state[attr] == "+"
-                continue
-
-            # just whether or not there is a value
-            state[attr] = self.tutor.state[attr] != ""
-
-            # equality
             for attr2 in self.tutor.state:
+                if attr == "initial_operator" or attr == "convert_operator":
+                    continue
+                if attr2 == "initial_operator" or attr2 == "convert_operator":
+                    continue
                 if attr >= attr2:
                     continue
                 state['eq(%s,%s)' % (attr, attr2)] = self.tutor.state[attr] == self.tutor.state[attr2]
 
         return state
-
-    def __init__(self):
-        self.tutor = FractionArithSymbolic()
-        n_selections = len(self.tutor.get_possible_selections())
-        n_features = len(self.get_rl_state())
-        n_operators = len(self.get_rl_operators())
-        n_args = len(self.tutor.get_possible_args())
-        self.dv = DictVectorizer()
-        self.dv.fit([self.get_rl_state()])
-
-        self.observation_space = spaces.Box(low=0.0,
-                high=1.0, shape=(1, n_features), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([n_selections, n_operators,
-            n_args, n_args])
 
     def step(self, action):
         try:
@@ -628,7 +606,7 @@ class FractionArithOppEnv(gym.Env):
         
         state = self.get_rl_state()
         # pprint(state)
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.fit_transform([state])[0]
         info = {}
 
         return obs, reward, done, info
@@ -668,7 +646,7 @@ class FractionArithOppEnv(gym.Env):
     def reset(self):
         self.tutor.set_random_problem()
         state = self.get_rl_state()
-        obs = self.dv.transform([state])[0].toarray()
+        obs = self.dv.fit_transform([state])[0]
         return obs
 
     def render(self, mode='human', close=False):
