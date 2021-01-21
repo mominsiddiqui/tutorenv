@@ -203,8 +203,8 @@ class MultiColumnAdditionSymbolic:
         # append correct/incorrect counts
         if add_counts:
             d.text((0, 0), "h:{}".format(self.num_hints), fill=(0,0,0))
-            d.text((0, 10), "-:{}".format(self.num_incorrect_steps), fill=(0,0,0))
-            d.text((0, 20), "+:{}".format(self.num_correct_steps), fill=(0,0,0))
+            d.text((0, 80), "-:{}".format(self.num_incorrect_steps), fill=(0,0,0))
+            d.text((20, 0), "+:{}".format(self.num_correct_steps), fill=(0,0,0))
 
         if add_dot:
             d.ellipse((add_dot[0]-3, add_dot[1]-3, add_dot[0]+3, add_dot[1]+3),
@@ -564,7 +564,7 @@ class MultiColumnAdditionOppEnv(gym.Env):
     def __init__(self):
         self.tutor = MultiColumnAdditionSymbolic()
         n_selections = len(self.tutor.get_possible_selections())
-        n_features = 2000
+        n_features = 5000
         n_operators = len(self.get_rl_operators())
         n_args = len(self.tutor.get_possible_args())
         self.dv = OnlineDictVectorizer(n_features)
@@ -586,47 +586,37 @@ class MultiColumnAdditionOppEnv(gym.Env):
     def get_rl_state(self):
         state = self.tutor.state.copy()
         for attr in self.tutor.state:
-            if attr == "operator":
+            if attr == "operator" or state[attr] == "":
                 continue
             for attr2 in self.tutor.state:
-                if attr2 == "operator":
+                if attr2 == "operator" or state[attr2] == "":
                     continue
                 if attr >= attr2:
                     continue
 
-                try:
-                    ones2 = int2_float_add_then_ones(state[attr], state[attr2])
-                    state['add2-ones(%s,%s)' % (attr, attr2)] = ones2
-                except Exception:
-                    pass
-                try:
-                    tens2 = int2_float_add_then_tens(state[attr], state[attr2])
-                    state['add2-tens(%s,%s)' % (attr, attr2)] = tens2
-                except Exception:
-                    pass
+                ones2 = int2_float_add_then_ones(state[attr], state[attr2])
+                state['add2-ones(%s,%s)' % (attr, attr2)] = ones2
+                tens2 = int2_float_add_then_tens(state[attr], state[attr2])
+                state['add2-tens(%s,%s)' % (attr, attr2)] = tens2
 
                 for attr3 in self.tutor.state:
-                    if attr3 == "operator":
+                    if attr3 == "operator" or state[attr3] == "":
                         continue
                     if attr2 >= attr3:
                         continue
 
-                try:
                     ones3 = int3_float_add_then_ones(state[attr], state[attr2],
                                                      state[attr3])
-                    state['add2-ones(%s,%s,%s)' % (attr, attr2, attr3)] = ones3
-                except Exception:
-                    pass
-                try:
+                    state['add3-ones(%s,%s,%s)' % (attr, attr2, attr3)] = ones3
                     tens3 = int3_float_add_then_tens(state[attr], state[attr2],
                                                      state[attr3])
-                    state['add2-tens(%s,%s,%s)' % (attr, attr2, attr3)] = tens3
-                except Exception:
-                    pass
+                    state['add3-tens(%s,%s,%s)' % (attr, attr2, attr3)] = tens3
 
         return state
 
     def step(self, action):
+        self.n_steps += 1
+
         try:
             s, a, i = self.decode(action)
             reward = self.tutor.apply_sai(s, a, i)
@@ -634,6 +624,8 @@ class MultiColumnAdditionOppEnv(gym.Env):
         except ValueError:
             reward = -1
             done = False
+
+        # self.tutor.render()
 
         # print(s, a, i)
         # print()
@@ -643,6 +635,12 @@ class MultiColumnAdditionOppEnv(gym.Env):
         # pprint(state)
         obs = self.dv.fit_transform([state])[0]
         info = {}
+
+        # have a max steps for a given problem.
+        # When we hit that we're done regardless.
+        if self.n_steps > self.max_steps:
+            done = True
+
 
         return obs, reward, done, info
 
@@ -689,6 +687,7 @@ class MultiColumnAdditionOppEnv(gym.Env):
         return s, a, i
 
     def reset(self):
+        self.n_steps = 0
         self.tutor.set_random_problem()
         state = self.get_rl_state()
         obs = self.dv.fit_transform([state])[0]

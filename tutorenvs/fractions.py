@@ -26,8 +26,8 @@ class FractionArithSymbolic:
         Creates a state and sets a random problem.
         """
         if logger is None:
-            # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
-            self.logger = StubLogger()
+            self.logger = DataShopLogger('FractionsTutor', extra_kcs=['field'])
+            # self.logger = StubLogger()
         else:
             self.logger = logger
         self.logger.set_student()
@@ -155,14 +155,15 @@ class FractionArithSymbolic:
         return state_output
 
     def set_random_problem(self):
-        num1 = str(randint(1, 5))
-        num2 = str(randint(1, 5))
-        denom1 = str(randint(2, 5))
-        denom2 = str(randint(2, 5))
+        num1 = str(randint(1, 15))
+        num2 = str(randint(1, 15))
+        denom1 = str(randint(2, 15))
+        denom2 = str(randint(2, 15))
         operator = choice(['+', '*'])
 
         self.reset(num1, denom1, operator, num2, denom2)
-        self.logger.set_problem("%s_%s_%s_%s_%s" % (num1, denom1, operator, num2, denom2))
+        self.logger.set_problem("%s_%s_%s_%s_%s" % (num1, denom1, operator,
+                                                    num2, denom2))
 
         if operator == "+" and denom1 == denom2:
             self.ptype = 'AS'
@@ -388,11 +389,11 @@ class FractionArithNumberEnv(gym.Env):
     def __init__(self):
         self.tutor = FractionArithSymbolic()
         n_selections = len(self.tutor.get_possible_selections())
-        n_features = 2000
+        n_features = 900
         self.dv = OnlineDictVectorizer(n_features)
         self.observation_space = spaces.Box(
             low=0.0, high=1.0, shape=(1, n_features), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([n_selections, 50])
+        self.action_space = spaces.MultiDiscrete([n_selections, 450])
         self.n_steps = 0
         self.max_steps = 100000
 
@@ -592,6 +593,7 @@ class FractionArithOppEnv(gym.Env):
         return state
 
     def step(self, action):
+        self.n_steps += 1
         try:
             s, a, i = self.decode(action)
             reward = self.tutor.apply_sai(s, a, i)
@@ -608,6 +610,9 @@ class FractionArithOppEnv(gym.Env):
         # pprint(state)
         obs = self.dv.fit_transform([state])[0]
         info = {}
+
+        if self.n_steps > self.max_steps:
+            done = True
 
         return obs, reward, done, info
 
@@ -644,6 +649,7 @@ class FractionArithOppEnv(gym.Env):
         return s, a, i
 
     def reset(self):
+        self.n_steps = 0
         self.tutor.set_random_problem()
         state = self.get_rl_state()
         obs = self.dv.fit_transform([state])[0]
