@@ -34,8 +34,8 @@ class MultiColumnAdditionSymbolic:
         Creates a state and sets a random problem.
         """
         if logger is None:
-            # self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
-            self.logger = StubLogger()
+            self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
+            # self.logger = StubLogger()
         else:
             self.logger = logger
         self.logger.set_student()
@@ -307,6 +307,11 @@ class MultiColumnAdditionSymbolic:
 
         # we can only edit selections that are editable
         if self.state[selection] != "":
+            return -1.0
+
+        # You can't send the empty string (this is an edge case that can cause
+        # problems.
+        if inputs['value'] == "":
             return -1.0
 
         if (selection == "answer_ones" and
@@ -640,7 +645,6 @@ class MultiColumnAdditionOppEnv(gym.Env):
         # When we hit that we're done regardless.
         if self.n_steps > self.max_steps:
             done = True
-
 
         return obs, reward, done, info
 
