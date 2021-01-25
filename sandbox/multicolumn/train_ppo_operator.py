@@ -136,12 +136,14 @@ class TrialEvalCallback(EvalCallback):
 
 
 if __name__ == "__main__":
-    params = {'n_step_pow': 7.0, 'batches_pow': 7.0, 'gamma': 0.0, 'lr':
-              0.0002916406263715553, 'lr_schedule': 'constant', 'ent_coef':
-              0.005743227072532813, 'clip_range': 0.4, 'n_epochs': 10,
-              'gae_lambda': 0.99, 'max_grad_norm': 0.5, 'vf_coef':
-              0.8088573261336596, 'net_arch': 'medium', 'shared_arch': True,
-              'activation_fn': 'relu'}
+
+    # Best PPO Operator 3.6
+    params = {'n_step_pow': 7.0, 'batches_pow': 6.0, 'gamma': 0.0, 'lr':
+              0.0007141880569765198, 'lr_schedule': 'constant', 'ent_coef':
+              0.002919157761809425, 'clip_range': 0.4, 'n_epochs': 1,
+              'gae_lambda': 1.0, 'max_grad_norm': 0.3, 'vf_coef':
+              0.5683112652410534, 'net_arch': 'small', 'shared_arch': True,
+              'activation_fn': 'tanh'}
 
     kwargs = get_args(params)
 
