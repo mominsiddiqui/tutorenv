@@ -33,15 +33,12 @@ def get_args(params: Dict[str, Any]) -> Dict[str, Any]:
     shared_arch = params['shared_arch']
     activation_fn = params['activation_fn']
 
-    # TODO: account when using multiple envs
     if batch_size > n_steps:
         batch_size = n_steps
 
     if lr_schedule == "linear":
         learning_rate = linear_schedule(learning_rate)
 
-    # Independent networks usually work best
-    # when not working with images
     net_arch = {
         True: {
             "tiny": [32, dict(pi=[32], vf=[32])],
@@ -85,10 +82,8 @@ def get_args(params: Dict[str, Any]) -> Dict[str, Any]:
         max_grad_norm,
         "vf_coef":
         vf_coef,
-        # "sde_sample_freq": sde_sample_freq,
         "policy_kwargs":
         dict(
-            # log_std_init=log_std_init,
             net_arch=net_arch,
             activation_fn=activation_fn,
             ortho_init=ortho_init,
@@ -125,8 +120,6 @@ class TrialEvalCallback(EvalCallback):
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             super(TrialEvalCallback, self)._on_step()
             self.eval_idx += 1
-            # report best or report current ?
-            # report num_timesteps or elasped time ?
             self.trial.report(self.last_mean_reward, self.eval_idx)
             # Prune trial if need
             if self.trial.should_prune():
@@ -136,28 +129,6 @@ class TrialEvalCallback(EvalCallback):
 
 
 if __name__ == "__main__":
-    # params = {
-    #     'batch_size': 32,
-    #     'n_steps': 16,
-    #     'gamma': 0.0,
-    #     'lr': 0.00017980950834568327,
-    #     'lr_schedule': 'constant',
-    #     'ent_coef': 0.07439893598338435,
-    #     'clip_range': 0.4,
-    #     'n_epochs': 10,
-    #     'gae_lambda': 0.95,
-    #     'max_grad_norm': 0.8,
-    #     'vf_coef': 0.13214811411452415,
-    #     'net_arch': 'medium',
-    #     'shared_arch': False,
-    #     'activation_fn': 'tanh'
-    # }
-
-    # params = {'activation_fn': 'relu', 'batch_size': 32, 'clip_range': 0.1,
-    #           'ent_coef': 0.008425259906148678, 'gae_lambda': 0.98, 'gamma':
-    #           0.0, 'lr': 0.0014548935455020253, 'lr_schedule': 'linear',
-    #           'max_grad_norm': 0.6, 'n_epochs': 5, 'n_steps': 64, 'net_arch':
-    #           'medium', 'shared_arch': True, 'vf_coef': 0.6725952403531438}
 
     params = {'n_step_pow': 5.0, 'batches_pow': 5.0, 'gamma': 0.0, 'lr':
               0.0014291278312354846, 'lr_schedule': 'linear', 'ent_coef':

@@ -7,10 +7,8 @@ import optuna
 from torch import nn as nn
 from stable_baselines3 import PPO
 from stable_baselines3.ppo import MlpPolicy
-# from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
-# from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.monitor import load_results
 
@@ -28,23 +26,13 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     n_step_pow = trial.suggest_discrete_uniform('n_step_pow', 3, 11, 1)
     n_steps = int(2**n_step_pow)
 
-    # possible_n_steps = [8, 16, 32, 64, 128, 256, 512, 1024, 2048]
-    # n_steps = trial.suggest_categorical("n_steps",
-    #                                     possible_n_steps)
-
     batches_pow = trial.suggest_discrete_uniform('batches_pow', 3,
                                                  n_step_pow, 1)
     batch_size = int(2**batches_pow)
 
-    # possible_batches = [8, 16, 32, 64, 128, 256, 512]
-    # batch_size = trial.suggest_categorical("batch_size",
-    #                                        possible_batches)
-
     gamma = trial.suggest_categorical("gamma", [0.0])
-    # 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     learning_rate = trial.suggest_loguniform("lr", 1e-8, 1)
-    # lr_schedule = "constant"
-    # Uncomment to enable learning rate schedule
+
     lr_schedule = trial.suggest_categorical('lr_schedule',
                                             ['linear', 'constant'])
     ent_coef = trial.suggest_loguniform("ent_coef", 0.00000000001, 0.1)
@@ -70,8 +58,6 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     if lr_schedule == "linear":
         learning_rate = linear_schedule(learning_rate)
 
-    # Independent networks usually work best
-    # when not working with images
     net_arch = {
         True: {
             "tiny": [32, dict(pi=[32], vf=[32])],
@@ -113,10 +99,8 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
         max_grad_norm,
         "vf_coef":
         vf_coef,
-        # "sde_sample_freq": sde_sample_freq,
         "policy_kwargs":
         dict(
-            # log_std_init=log_std_init,
             net_arch=net_arch,
             activation_fn=activation_fn,
             ortho_init=ortho_init,
@@ -154,10 +138,7 @@ class TrialCallback(BaseCallback):
                 return True
             avg_last_n = results['r'][-self.n_eval_episodes:].mean()
             self.eval_idx += 1
-            # report best or report current ?
-            # report num_timesteps or elasped time ?
             self.trial.report(avg_last_n, self.eval_idx)
-            # print('Idx:', self.eval_idx, 'Avg_last_n', avg_last_n)
 
             # Prune trial if need
             if avg_last_n < self.min_eval or self.trial.should_prune():
@@ -204,7 +185,6 @@ def objective(trial: optuna.Trial) -> float:
 
         results = load_results(log_dir)
         avg_last_n = results['r'][-n_eval_episodes:].mean()
-        # print('Final avg_last_n:', avg_last_n)
         return avg_last_n
 
 

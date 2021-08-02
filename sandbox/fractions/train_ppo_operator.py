@@ -40,8 +40,6 @@ def get_args(params: Dict[str, Any]) -> Dict[str, Any]:
     if lr_schedule == "linear":
         learning_rate = linear_schedule(learning_rate)
 
-    # Independent networks usually work best
-    # when not working with images
     net_arch = {
         True: {
             "tiny": [32, dict(pi=[32], vf=[32])],
@@ -85,10 +83,8 @@ def get_args(params: Dict[str, Any]) -> Dict[str, Any]:
         max_grad_norm,
         "vf_coef":
         vf_coef,
-        # "sde_sample_freq": sde_sample_freq,
         "policy_kwargs":
         dict(
-            # log_std_init=log_std_init,
             net_arch=net_arch,
             activation_fn=activation_fn,
             ortho_init=ortho_init,
@@ -125,8 +121,6 @@ class TrialEvalCallback(EvalCallback):
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             super(TrialEvalCallback, self)._on_step()
             self.eval_idx += 1
-            # report best or report current ?
-            # report num_timesteps or elasped time ?
             self.trial.report(self.last_mean_reward, self.eval_idx)
             # Prune trial if need
             if self.trial.should_prune():

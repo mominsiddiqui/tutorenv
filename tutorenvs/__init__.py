@@ -22,12 +22,6 @@ register(
     entry_point='tutorenvs:FractionArithDigitsEnv',
 )
 
-# TODO no pixel fractions yet.
-# register(
-#     id='FractionArith-v2',
-#     entry_point='tutorenvs:FractionArithPixelEnv',
-# )
-
 register(
     id='MulticolumnArithSymbolic-v0',
     entry_point='tutorenvs:MultiColumnAdditionDigitsEnv',

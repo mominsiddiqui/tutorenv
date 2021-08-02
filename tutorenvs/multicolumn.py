@@ -34,13 +34,13 @@ class MultiColumnAdditionSymbolic:
         Creates a state and sets a random problem.
         """
         if logger is None:
+            # Note: To Produce log file comment out the stublogger and uncomment the data shop logger
             self.logger = DataShopLogger('MulticolumnAdditionTutor', extra_kcs=['field'])
             # self.logger = StubLogger()
         else:
             self.logger = logger
         self.logger.set_student()
         self.set_random_problem()
-        # self.reset("", "", "", "", "")
 
     def reset(self, upper, lower):
         """
@@ -175,8 +175,6 @@ class MultiColumnAdditionSymbolic:
         d = ImageDraw.Draw(img)
         d.text((10, 10), output, fill='black')
 
-        # Draw input fields
-
         # ones
         if state['answer_ones'] == " ":
             d.rectangle(((34, 71), (38, 79)), fill=None, outline='black')
@@ -248,10 +246,7 @@ class MultiColumnAdditionSymbolic:
     def set_random_problem(self):
         upper = str(randint(1,999))
         lower = str(randint(1,999))
-        # upper = str(randint(1,99))
-        # lower = str(randint(1,99))
-        # upper = str(randint(1,9))
-        # lower = str(randint(1,9))
+    
         self.reset(upper=upper, lower=lower)
         self.logger.set_problem("%s_%s" % (upper, lower))
 
@@ -274,10 +269,6 @@ class MultiColumnAdditionSymbolic:
             return reward
 
         if selection == "done":
-            # print("DONE! Only took %i steps." % (self.num_correct_steps + self.num_incorrect_steps))
-            # self.render()
-            # print()
-            # pprint(self.state)
             self.set_random_problem()
 
         else:
@@ -291,7 +282,6 @@ class MultiColumnAdditionSymbolic:
         """
         Given a SAI, returns whether it is correct or incorrect.
         """
-        # done step
         if selection == "done":
 
             if action != "ButtonPressed":
@@ -305,12 +295,9 @@ class MultiColumnAdditionSymbolic:
             else:
                 return -1.0
 
-        # we can only edit selections that are editable
         if self.state[selection] != "":
             return -1.0
 
-        # You can't send the empty string (this is an edge case that can cause
-        # problems.
         if inputs['value'] == "":
             return -1.0
 
@@ -385,7 +372,6 @@ class MultiColumnAdditionSymbolic:
 
         return -1.0
 
-    # TODO still need to rewrite for multi column arith
     def request_demo(self):
         demo = self.get_demo()
         feedback_text = "selection: %s, action: %s, input: %s" % (demo[0],
@@ -468,18 +454,11 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         self.n_steps += 1
 
         s, a, i = self.decode(action)
-        # print(s, a, i)
-        # print()
         reward = self.tutor.apply_sai(s, a, i)
-        # self.render()
-        # print(reward)
         state = self.tutor.state
-        # pprint(state)
         obs = self.dv.fit_transform([state])[0]
         done = (s == 'done' and reward == 1.0)
 
-        # have a max steps for a given problem.
-        # When we hit that we're done regardless.
         if self.n_steps > self.max_steps:
             done = True
 
@@ -488,7 +467,6 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
         return obs, reward, done, info
 
     def decode(self, action):
-        # print(action)
         s = self.tutor.get_possible_selections()[action[0]]
 
         if s == "done":
@@ -510,7 +488,6 @@ class MultiColumnAdditionDigitsEnv(gym.Env):
     def reset(self):
         self.n_steps = 0
         self.tutor.set_random_problem()
-        # self.render()
         state = self.get_rl_state()
         obs = self.dv.fit_transform([state])[0]
         return obs
@@ -630,19 +607,10 @@ class MultiColumnAdditionOppEnv(gym.Env):
             reward = -1
             done = False
 
-        # self.tutor.render()
-
-        # print(s, a, i)
-        # print()
-        # print(reward)
-
         state = self.get_rl_state()
-        # pprint(state)
         obs = self.dv.fit_transform([state])[0]
         info = {}
 
-        # have a max steps for a given problem.
-        # When we hit that we're done regardless.
         if self.n_steps > self.max_steps:
             done = True
 
@@ -667,7 +635,6 @@ class MultiColumnAdditionOppEnv(gym.Env):
                                             self.tutor.state[arg3])
 
     def decode(self, action):
-        # print(action)
         s = self.tutor.get_possible_selections()[action[0]]
         op = self.get_rl_operators()[action[1]]
         arg1 = self.tutor.get_possible_args()[action[2]]
@@ -720,20 +687,14 @@ class MultiColumnAdditionPixelEnv(gym.Env):
 
     def step(self, action):
         s, a, i = self.decode(action)
-        # print(s, a, i)
-        # print()
-        reward = self.tutor.apply_sai(s, a, i)
-        # print(reward)
-        
+        reward = self.tutor.apply_sai(s, a, i)        
         obs = self.get_rl_state()
-        # pprint(state)
         done = (s == 'done' and reward == 1.0)
         info = {}
 
         return obs, reward, done, info
 
     def decode(self, action):
-        # print(action)
         s = self.tutor.get_possible_selections()[action[0]]
 
         if s == "done":
@@ -792,7 +753,6 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
 
         self.observation_space = spaces.Box(low=0,
                 high=255, shape=self.get_rl_state().shape, dtype=np.uint8)
-        # self.action_space = spaces.MultiDiscrete([n_selections, 10])
         self.action_space = spaces.Discrete(12)
 
     def set_xy(self):
@@ -808,7 +768,6 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
         translate = img.transform((round(img.size[0]*x_multiplier),
             round(img.size[1]*y_multiplier)), Image.AFFINE, (1, 0, x, 0, 1, y), fillcolor='white')
 
-        # Pretty output
         cv2.imshow('translated', np.array(translate))
         cv2.waitKey(1)
         self.render()
@@ -819,18 +778,6 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
         s = None
         reward = -1
 
-        # if action == 0:
-        #     # left
-        #     self.x -= 5
-        # elif action == 1:
-        #     # right
-        #     self.x += 5
-        # elif action == 2:
-        #     # up
-        #     self.y += 5
-        # elif action == 3:
-        #     # down
-        #     self.y -= 5
         if action == 0:
             self.current_target = (self.current_target + 1) % len(self.targets)
             self.set_xy()
@@ -840,8 +787,6 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
             a = "ButtonPressed"
             i = -1
         else:
-
-            # answer fields
             if self.x >= 34 and self.y >= 71 and self.x <= 38 and self.y <=79:
                 s = "answer_ones"
             elif self.x >= 28 and self.y >= 71 and self.x <= 32 and self.y <=79:
@@ -865,17 +810,6 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
         if s != None:
             reward = self.tutor.apply_sai(s, a, i)
 
-        # code to skip completed fields
-        # skipper = 0
-        # original_target = self.current_target
-        # while self.tutor.state[self.targets[self.current_target]] != '':
-        #     self.current_target = (self.current_target + 1) % len(self.targets)
-        #     skipper += 1
-        #     if skipper > 7:
-        #         self.current_target = original_target
-        #         break
-        # self.set_xy()
-
         self.x = min(max(self.x, 0), 50)
         self.y = min(max(self.y, 0), 90)
 
@@ -883,12 +817,9 @@ class MultiColumnAdditionPerceptEnv(gym.Env):
         done = (s == 'done' and reward == 1.0)
         info = {}
 
-        # self.render()
-
         return obs, reward, done, info
 
     def decode(self, action):
-        # print(action)
         s = self.tutor.get_possible_selections()[action[0]]
 
         if s == "done":

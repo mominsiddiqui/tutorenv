@@ -41,21 +41,17 @@ def train_tree(n=10, logger=None):
 
         if sai is None:
             hints += 1
-            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
 
         reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
-        # print('reward', reward)
 
         if reward < 0:
             hints += 1
-            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
             reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
 
-        # X.append(state)
         y.append(sai)
 
         if Xv is None:
@@ -63,7 +59,6 @@ def train_tree(n=10, logger=None):
         else:
             Xv = np.concatenate((Xv, dv.fit_transform([state])))
 
-        # print('shape', Xv.shape)
         actions = set(y)
         action_mapping = {l: i for i, l in enumerate(actions)}
         rev_action_mapping = {i: l for i, l in enumerate(actions)}

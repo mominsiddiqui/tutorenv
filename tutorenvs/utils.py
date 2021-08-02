@@ -138,7 +138,6 @@ class DataShopLogger():
             self.level_domain,
             self.problem_name,
             self.problem_start,
-            # self.step_count,
             step_name,
             selection,
             action,
@@ -202,18 +201,6 @@ class MultiDiscreteToDiscreteWrapper(gym.ActionWrapper):
         self.action_vec = self.action_space.nvec
         self.action_space = gym.spaces.Discrete(np.prod(self.action_vec))
 
-    # def convert(act):
-    #     discrete_act = 0
-    #     for i, v in enumerate(act):
-    #         discrete_act += (v * np.prod(self.action_vec[i+1:]))
-    #     return discrete_act
-
-    # def unconvert(discrete_act):
-    #     act = np.zeros_like(self.action_vec)
-    #     for i in range(len(self.action_vec)):
-    #         act[i] = discrete_act // np.prod(self.action_vec[i+1:])
-    #         discrete_act = discrete_act % np.prod(self.action_vec[i+1:])
-    #     return act
 
     def action(self, discrete_act):
         act = np.zeros_like(self.action_vec)
@@ -330,38 +317,16 @@ class BaseOppEnv(gym.Env):
                 ('div10', 1)]
 
     def get_rl_state(self):
-        # self.state = {
-        #     'hundreds_carry': '',
-        #     'tens_carry': '',
-        #     'ones_carry': '',
-        #     'upper_hundreds': upper_hundreds,
-        #     'upper_tens': upper_tens,
-        #     'upper_ones': upper_ones,
-        #     'lower_hundreds': lower_hundreds,
-        #     'lower_tens': lower_tens,
-        #     'lower_ones': lower_ones,
-        #     'operator': '+',
-        #     'answer_thousands': '',
-        #     'answer_hundreds': '',
-        #     'answer_tens': '',
-        #     'answer_ones': ''
-        # }
-
         state = {}
         for attr in self.tutor.state:
 
-            # TODO need generic way to handle this.
             if attr == "operator":
                 continue
-
-            # just whether or not there is a value
             state[attr] = self.tutor.state[attr] != ""
 
-        # if its in internal memory, then return true, else false.
         for attr in self.internal_memory:
             state[attr] = True
 
-        # relations (equality, >10)
         new_relations = {}
 
         for attr in state:
@@ -373,7 +338,6 @@ class BaseOppEnv(gym.Env):
             else:
                 attr_val = ''
 
-            # greater than 9
             try:
                 new_relations['greater_than_9(%s)' %
                               str(attr)] = float(attr_val) > 9
@@ -387,8 +351,6 @@ class BaseOppEnv(gym.Env):
         pprint(state)
 
         return state
-        # convert all attributes to strings
-        # return {str(attr): state[attr] for attr in state}
 
     def step(self, action):
         try:
@@ -409,12 +371,7 @@ class BaseOppEnv(gym.Env):
             reward = -1
             done = False
 
-        # print(s, a, i)
-        # print()
-        # print(reward)
-
         state = self.get_rl_state()
-        # pprint(state)
         obs = self.dv.fit_transform([state])[0]
         info = {}
 

@@ -27,8 +27,6 @@ def train_tree(n=10, logger=None):
     hints = 0
 
     while p < n:
-
-        # make a copy of the state
         state = {a: env.state[a] for a in env.state}
         env.render()
 
@@ -46,16 +44,13 @@ def train_tree(n=10, logger=None):
 
         if sai is None:
             hints += 1
-            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
 
         reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
-        # print('reward', reward)
 
         if reward < 0:
             hints += 1
-            # print('hint')
             sai = env.request_demo()
             sai = (sai[0], sai[1], sai[2]['value'])
             reward = env.apply_sai(sai[0], sai[1], {'value': sai[2]})
