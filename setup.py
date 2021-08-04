@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='tutorenvs',
-    version='1.0.0',    
+    name='tutorgym',
+    version='0.0.1',    
     description='A toolkit that provides a machine interfaces for multiple tutor environments. TutorGym leverages the OpenAI Gym to enable existing RL implementations (that support Gym) to interface with these environments',
     url='https://gitlab.cci.drexel.edu/teachable-ai-lab/tutorenvs',
     author='Christopher J. MacLellan',
@@ -14,6 +14,14 @@ setup(
                       'opencv-python',
                       'sklearn',
                       ],
+    classifiers=[
+    'Development Status :: 4 - Beta',
+    'Intended Audience :: Science/Research',
+    'topic :: Scientific/Engineering :: Artificial Intelligence',
+    'License :: OSI Approved :: MIT License',  
+    'Operating System :: OS Independent',        
+    'Programming Language :: Python',
+    ],
     setup_requires=['pbr'],
     pbr=True,
 )
