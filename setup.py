@@ -23,5 +23,5 @@ setup(
     'Programming Language :: Python',
     ],
     setup_requires=['pbr'],
-    pbr=True,
+    pbr=False,
 )
