@@ -4,7 +4,7 @@ This library contains headless versions of a number of commonly used tutoring sy
 
 ## Installation
 
-To install the base Gym library, use `pip install tutorenvs`.
+To install the base Gym library, use `pip install tutorgym`.
 
 ## Example with PPO
 
