@@ -155,10 +155,10 @@ class FractionArithSymbolic:
         return state_output
 
     def set_random_problem(self):
-        num1 = str(randint(1, 15))
-        num2 = str(randint(1, 15))
-        denom1 = str(randint(2, 15))
-        denom2 = str(randint(2, 15))
+        num1 = str(randint(1, 1))
+        num2 = str(randint(1, 1))
+        denom1 = str(randint(2, 2))
+        denom2 = str(randint(2, 2))
         operator = choice(['+', '*'])
         # operator = choice(['*'])
 

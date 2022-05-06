@@ -1,4 +1,4 @@
-from apprentice.agents.glen_agent import GlenAgent
+from apprentice.agents.tact_agent import TACTAgent
 from apprentice.working_memory.representation import Sai
 
 from tutorenvs.fractions import FractionArithSymbolic
@@ -136,27 +136,11 @@ if __name__ == "__main__":
         Filter(lambda v1: is_number(v1)) &
         Fact(id=V('id2'), value=V('v1')) &
         Filter(lambda id1, id2: id1 < id2))
-    def equals(id1, v1, id2, v2):
+    def equals(id1, id2):
         return [Fact(relation='equality', first=id1, second=id2)]
 
-
-
-    @Production(
-        Fact(id=V('id1'), value=V('n1')) &
-        Filter(lambda n1: is_number(n1)) &
-        Fact(id=V('id2'), value=V('n2')) &
-        Filter(lambda n2: is_number(n2)) &
-        Fact(id=V('id3'), value=V('n3')) &
-        Filter(lambda n3: is_number(n3)) &
-        Filter(lambda n1, n2, n3: str(int(n1) + int(n2) + int(n3)) == '22'))
-    def beep(n1, n2):
-        print("FOUND pair of numbers that sum to 2")
-        return []
-        return [Sai(selection='answer_denom', action="UpdateField",
-                   inputs={'value': '22'})]
-
-    agent = GlenAgent(skills=[# correct_doneSAI, multiply, add, copySAI, 
-        beep])
-    # agent = GlenAgent(skills=[multiply, copy])
+    agent = TACTAgent(concepts=[equals],
+                      skills=[])
+                      # skills=[correct_doneSAI, add, multiply, copySAI])
 
     run_training(agent, n=500)
