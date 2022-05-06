@@ -135,21 +135,21 @@ class FractionArithSymbolic:
                         {'id': attr, 'value': self.state[attr],
                          'type': 'TextField',
                          'contentEditable': self.state[attr] == "",
-                         'dom_class': 'CTATTable--cell',
-                         'above': '',
-                         'below': '',
-                         'to_left': '',
-                         'to_right': ''
+                         # 'dom_class': 'CTATTable--cell',
+                         # 'above': '',
+                         # 'below': '',
+                         # 'to_left': '',
+                         # 'to_right': ''
                          }
                         for attr in self.state}
         state_output['done'] = {
             'id': 'done',
             'type': 'Component',
-            'dom_class': 'CTATDoneButton',
-            'above': '',
-            'below': '',
-            'to_left': '',
-            'to_right': ''
+            # 'dom_class': 'CTATDoneButton',
+            # 'above': '',
+            # 'below': '',
+            # 'to_left': '',
+            # 'to_right': ''
         }
 
         return state_output
@@ -160,6 +160,7 @@ class FractionArithSymbolic:
         denom1 = str(randint(2, 15))
         denom2 = str(randint(2, 15))
         operator = choice(['+', '*'])
+        # operator = choice(['*'])
 
         self.reset(num1, denom1, operator, num2, denom2)
         self.logger.set_problem("%s_%s_%s_%s_%s" % (num1, denom1, operator,
